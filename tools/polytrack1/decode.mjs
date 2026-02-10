@@ -179,7 +179,7 @@ function decodePolyTrack1(code) {
 
 function usage() {
   // eslint-disable-next-line no-console
-  console.error("Usage: node tools/decode-polytrack1.mjs \"PolyTrack1...\"");
+  console.error("Usage: node tools/polytrack1/decode.mjs \"PolyTrack1...\"");
   process.exit(2);
 }
 

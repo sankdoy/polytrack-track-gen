@@ -6,7 +6,7 @@ function usage() {
   console.error(
     [
       "Usage:",
-      "  node tools/dedupe-ndjson-by-name.mjs --input <in.ndjson> --output <out.ndjson>",
+      "  node tools/ndjson/dedupe-by-name.mjs --input <in.ndjson> --output <out.ndjson>",
       "",
       "Options:",
       "  --case-sensitive    Treat names as case-sensitive (default: case-insensitive)",
@@ -90,4 +90,3 @@ console.error(
     `Unique names kept: ${seen.size}`,
   ].join("\n"),
 );
-

@@ -101,7 +101,7 @@ function decodeV3ShareCode(code) {
 
 function usage() {
   // eslint-disable-next-line no-console
-  console.error("Usage: node tools/extract-v3-connector-rules.mjs --input <sharecodes.txt> [--limit <n>] [--out <rules.json>]");
+  console.error("Usage: node tools/v3/extract-connector-rules.mjs --input <sharecodes.txt> [--limit <n>] [--out <rules.json>]");
   process.exit(2);
 }
 
@@ -203,4 +203,3 @@ if (args.outPath) {
 
 // eslint-disable-next-line no-console
 console.error(`Decoded: ${ok}, bad: ${bad}`);
-

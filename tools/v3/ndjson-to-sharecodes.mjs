@@ -82,7 +82,7 @@ function usage() {
   console.error(
     [
       "Usage:",
-      "  node tools/ndjson-to-v3-sharecodes.mjs --input <tracks.ndjson> [--output <out.txt>]",
+      "  node tools/v3/ndjson-to-sharecodes.mjs --input <tracks.ndjson> [--output <out.txt>]",
       "",
       "Options:",
       "  --limit <n>         Convert first N tracks (default: all)",
@@ -176,4 +176,3 @@ if (output !== process.stdout) output.end();
 
 // eslint-disable-next-line no-console
 console.error(`Converted ${written} track(s).`);
-

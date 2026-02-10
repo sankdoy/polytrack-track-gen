@@ -14,7 +14,7 @@ function usage() {
   console.error(
     [
       "Usage:",
-      "  node tools/analyze-piece-interactions.mjs --input <tracks.ndjson> [--limit <n>]",
+      "  node tools/ndjson/analyze-piece-interactions.mjs --input <tracks.ndjson> [--limit <n>]",
     ].join("\n"),
   );
   process.exit(2);
@@ -140,4 +140,3 @@ for (const [k, c] of topN(neighborCounts, 60)) {
   // eslint-disable-next-line no-console
   console.log(`  ${c}x  ${k}`);
 }
-

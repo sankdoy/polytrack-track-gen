@@ -2,7 +2,7 @@ import fs from "node:fs";
 
 function usage() {
   // eslint-disable-next-line no-console
-  console.error("Usage: node tools/drop-ndjson-line.mjs --input <in.ndjson> --output <out.ndjson> --drop-line <n>");
+  console.error("Usage: node tools/ndjson/drop-line.mjs --input <in.ndjson> --output <out.ndjson> --drop-line <n>");
   process.exit(2);
 }
 
@@ -65,4 +65,3 @@ output.on("error", (err) => {
   console.error(err);
   process.exitCode = 1;
 });
-

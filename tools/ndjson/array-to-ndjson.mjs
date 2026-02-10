@@ -3,7 +3,7 @@ import { TextDecoder } from "node:util";
 
 function usage() {
   // eslint-disable-next-line no-console
-  console.error("Usage: node tools/json-array-to-ndjson.mjs <input.json> <output.ndjson>");
+  console.error("Usage: node tools/ndjson/array-to-ndjson.mjs <input.json> <output.ndjson>");
   process.exit(2);
 }
 
@@ -118,4 +118,3 @@ output.on("error", (err) => {
   console.error(err);
   process.exitCode = 1;
 });
-

@@ -17,7 +17,7 @@ Notes:
 
 If you have a huge single-line JSON array (VS Code may show `RangeError: Invalid string length`), convert it to NDJSON (one JSON object per line):
 
-`node tools/json-array-to-ndjson.mjs out_0.5.json out_0.5.ndjson`
+`node tools/ndjson/array-to-ndjson.mjs out_0.5.json out_0.5.ndjson`
 
 Then you can split it into smaller chunks:
 
@@ -25,4 +25,6 @@ Then you can split it into smaller chunks:
 
 To convert an NDJSON dump into `v3` share codes:
 
-`node tools/ndjson-to-v3-sharecodes.mjs --input out_0.5.ndjson --output sharecodes.txt`
+`node tools/v3/ndjson-to-sharecodes.mjs --input out_0.5.ndjson --output sharecodes.txt`
+
+More scripts live in `tools/README.md`.

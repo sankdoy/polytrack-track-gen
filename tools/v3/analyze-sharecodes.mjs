@@ -102,7 +102,7 @@ function decodeV3ShareCode(code) {
 
 function usage() {
   // eslint-disable-next-line no-console
-  console.error("Usage: node tools/analyze-v3-sharecodes.mjs --input <sharecodes.txt> [--limit <n>]");
+  console.error("Usage: node tools/v3/analyze-sharecodes.mjs --input <sharecodes.txt> [--limit <n>]");
   process.exit(2);
 }
 
