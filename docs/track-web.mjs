@@ -141,35 +141,31 @@ export function encodeV3ShareCode(name, trackData) {
 // ---- Manual mini-tracks (for debugging alignment) ----
 
 export const manualMiniTrackScenarios = [
-  { id: "start_straight_finish", label: "Start → Straight → Finish", steps: [{ kind: "straight" }] },
+  // Probes: force exit math correctness by continuing with strict pieces.
 
-  { id: "start_turnShort_R_finish", label: "Start → TurnShort (R) → Finish", steps: [{ kind: "turn", dir: "R", variant: "short" }] },
-  { id: "start_turnShort_L_finish", label: "Start → TurnShort (L) → Finish", steps: [{ kind: "turn", dir: "L", variant: "short" }] },
+  { id: "probe_straight_run", label: "Probe: Straight run (Start → Straight×4 → Finish)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "start_turnSharp_R_finish", label: "Start → TurnSharp (R) → Finish", steps: [{ kind: "turn", dir: "R", variant: "sharp" }] },
-  { id: "start_turnSharp_L_finish", label: "Start → TurnSharp (L) → Finish", steps: [{ kind: "turn", dir: "L", variant: "sharp" }] },
+  { id: "probe_turnShort_R_straights", label: "Probe: TurnShort (R) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnShort_L_straights", label: "Probe: TurnShort (L) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "start_turnLong3_R_exit3_finish", label: "Start → TurnLong3 (R, exit=3) → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 3 }] },
-  { id: "start_turnLong3_R_exit2_finish", label: "Start → TurnLong3 (R, exit=2) → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 2 }] },
-  { id: "start_turnLong3_R_exit4_finish", label: "Start → TurnLong3 (R, exit=4) → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 4 }] },
+  { id: "probe_turnSharp_R_straights", label: "Probe: TurnSharp (R) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnSharp_L_straights", label: "Probe: TurnSharp (L) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "start_turnLong3_L_exit3_finish", label: "Start → TurnLong3 (L, exit=3) → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 3 }] },
-  { id: "start_turnLong3_L_exit2_finish", label: "Start → TurnLong3 (L, exit=2) → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 2 }] },
-  { id: "start_turnLong3_L_exit4_finish", label: "Start → TurnLong3 (L, exit=4) → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 4 }] },
+  { id: "probe_turnLong3_R_exit3_straights", label: "Probe: TurnLong3 (R, exit=3) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 3 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_R_exit2_straights", label: "Probe: TurnLong3 (R, exit=2) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 2 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_R_exit4_straights", label: "Probe: TurnLong3 (R, exit=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "start_turnLong3_R_exit3_straight_finish", label: "Start → TurnLong3 (R, exit=3) → Straight → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 3 }, { kind: "straight" }] },
-  { id: "start_turnLong3_L_exit3_straight_finish", label: "Start → TurnLong3 (L, exit=3) → Straight → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 3 }, { kind: "straight" }] },
+  { id: "probe_turnLong3_L_exit3_straights", label: "Probe: TurnLong3 (L, exit=3) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 3 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_L_exit2_straights", label: "Probe: TurnLong3 (L, exit=2) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 2 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_L_exit4_straights", label: "Probe: TurnLong3 (L, exit=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "start_up_finish", label: "Start → SlopeUp → Finish", steps: [{ kind: "up", long: false }] },
-  { id: "start_upLong_finish", label: "Start → SlopeUpLong → Finish", steps: [{ kind: "up", long: true }] },
+  { id: "probe_turnShort_R_then_up", label: "Probe: TurnShort (R) → SlopeUp → Straight×2", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: false }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_up_then_turnShort_R", label: "Probe: SlopeUp → TurnShort (R) → Straight×2", steps: [{ kind: "up", long: false }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "start_up_down_finish", label: "Start → SlopeUp → SlopeDown → Finish", steps: [{ kind: "up", long: false }, { kind: "down", long: false }] },
-  { id: "start_upLong_downLong_finish", label: "Start → SlopeUpLong → SlopeDownLong → Finish", steps: [{ kind: "up", long: true }, { kind: "down", long: true }] },
+  { id: "probe_upLong_straight_downLong", label: "Probe: SlopeUpLong → Straight → SlopeDownLong → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] },
 
-  { id: "start_upLong_straight_downLong_finish", label: "Start → SlopeUpLong → Straight → SlopeDownLong → Finish", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }] },
-
-  { id: "start_turnShort_R_up_finish", label: "Start → TurnShort (R) → SlopeUp → Finish", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: false }] },
-  { id: "start_up_turnShort_R_finish", label: "Start → SlopeUp → TurnShort (R) → Finish", steps: [{ kind: "up", long: false }, { kind: "turn", dir: "R", variant: "short" }] },
+  // Minimal “termination-only” checks (kept for quick sanity, but not great at validating exit transforms).
+  { id: "sanity_start_straight_finish", label: "Sanity: Start → Straight → Finish", steps: [{ kind: "straight" }] },
 ];
 
 function getScenario(id) {
@@ -180,7 +176,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "start_straight_finish",
+    scenarioId = "probe_straight_run",
     name = "Manual Mini Track",
     environment = "Summer",
   } = params;
@@ -188,11 +184,25 @@ export function generateManualMiniTrack(params = {}) {
   const env = Environment[environment] ?? Environment.Summer;
   const trackData = new TrackData(env, 0);
   const placedSequence = [];
+  const anchorTrace = [];
 
   const scenario = getScenario(scenarioId);
 
   let x = 0, y = 0, z = 0;
   let heading = 0; // 0=N, 1=W, 2=S, 3=E (matches HEADING_DELTA)
+
+  const assertGrid = () => {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(z)) {
+      throw new Error(`Manual track left integer grid at (${x},${y},${z})`);
+    }
+    if ((x % TILE) !== 0 || (z % TILE) !== 0) {
+      throw new Error(`Manual track left 4-grid at (${x},${y},${z})`);
+    }
+    if (!Number.isInteger(heading) || heading < 0 || heading > 3) {
+      throw new Error(`Manual track invalid heading ${heading}`);
+    }
+    if (y < 0) throw new Error(`Manual track went below ground y=${y}`);
+  };
 
   const add = (blockType, rotation, checkpointOrder = null, startOrder = null) => {
     trackData.addPart(x, y, z, blockType, rotation, RotationAxis.YPositive, ColorStyle.Default, checkpointOrder, startOrder);
@@ -205,13 +215,19 @@ export function generateManualMiniTrack(params = {}) {
   };
 
   // Start at origin, then advance 1 tile forward.
+  anchorTrace.push({ event: "before", label: "Start", x, y, z, heading });
   add(BlockType.Start, heading, null, 0);
   move(heading, 1);
+  assertGrid();
+  anchorTrace.push({ event: "after", label: "Start", x, y, z, heading });
 
   for (const step of scenario.steps) {
+    const before = { x, y, z, heading };
     if (step.kind === "straight") {
       add(BlockType.Straight, heading);
       move(heading, 1);
+      assertGrid();
+      anchorTrace.push({ label: "Straight", ...before, rotation: heading, after: { x, y, z, heading } });
       continue;
     }
 
@@ -220,6 +236,8 @@ export function generateManualMiniTrack(params = {}) {
       add(step.long ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading);
       move(heading, tiles);
       y += 1;
+      assertGrid();
+      anchorTrace.push({ label: step.long ? "SlopeUpLong" : "SlopeUp", ...before, rotation: heading, after: { x, y, z, heading } });
       continue;
     }
 
@@ -227,9 +245,11 @@ export function generateManualMiniTrack(params = {}) {
       const tiles = step.long ? 2 : 1;
       // Match generator behavior: slope-down pieces are anchored at the lower (exit) height.
       y -= 1;
-      if (y < 0) y = 0;
+      assertGrid();
       add(step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading);
       move(heading, tiles);
+      assertGrid();
+      anchorTrace.push({ label: step.long ? "SlopeDownLong" : "SlopeDown", ...before, rotation: heading, after: { x, y, z, heading } });
       continue;
     }
 
@@ -252,16 +272,25 @@ export function generateManualMiniTrack(params = {}) {
       add(blockType, turnRotation);
       heading = newHeading;
       move(heading, exitTiles);
+      assertGrid();
+      anchorTrace.push({
+        label: `${BlockTypeName[blockType] || blockType}${turnRight ? " (R)" : " (L)"} exit=${exitTiles}`,
+        ...before,
+        rotation: turnRotation,
+        after: { x, y, z, heading },
+      });
       continue;
     }
 
     throw new Error(`Unknown step kind: ${step?.kind}`);
   }
 
+  anchorTrace.push({ event: "before", label: "Finish", x, y, z, heading });
   add(BlockType.Finish, heading);
+  anchorTrace.push({ event: "after", label: "Finish", x, y, z, heading });
 
   const shareCode = encodeV3ShareCode(name, trackData);
-  return { shareCode, trackData, name, seed: null, placedSequence, manualScenarioId: scenarioId, manualScenarioLabel: scenario.label };
+  return { shareCode, trackData, name, seed: null, placedSequence, anchorTrace, manualScenarioId: scenarioId, manualScenarioLabel: scenario.label };
 }
 
 // ---- Generator helpers ----

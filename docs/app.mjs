@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-10.4";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-10.5";
 
 const $ = (id) => document.getElementById(id);
 
@@ -137,11 +137,26 @@ function summarizeResult(result) {
     .map((p, i) => `${i}: ${BlockTypeName[p.blockType] || p.blockType}  (${p.x},${p.y},${p.z}) rot=${p.rotation}`)
     .join("\n");
 
+  const trace = Array.isArray(result.anchorTrace) ? result.anchorTrace : null;
+  const traceLines = trace
+    ? trace
+        .filter((t) => t && t.after && Number.isFinite(t.x) && Number.isFinite(t.after?.x))
+        .map((t, i) => {
+          const from = `(${t.x},${t.y},${t.z}) h=${t.heading}`;
+          const to = `(${t.after.x},${t.after.y},${t.after.z}) h=${t.after.heading}`;
+          const rot = `rot=${t.rotation ?? "?"}`;
+          return `${i}: ${t.label}  ${rot}  ${from} -> ${to}`;
+        })
+        .join("\n")
+    : "";
+
   const manualLine = result.manualScenarioLabel
     ? `\n\nmanualScenario: ${result.manualScenarioLabel} (${result.manualScenarioId || "unknown"})`
     : "";
 
-  return `pieces: ${total}\nbyType(top): ${top}\n\nsequence(first 40):\n${seqLines || "(not available)"}${manualLine}`;
+  const traceBlock = traceLines ? `\n\nanchorTrace:\n${traceLines}` : "";
+
+  return `pieces: ${total}\nbyType(top): ${top}\n\nsequence(first 40):\n${seqLines || "(not available)"}${manualLine}${traceBlock}`;
 }
 
 async function generateBatch() {
