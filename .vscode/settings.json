@@ -1,0 +1,17 @@
+{
+  "files.exclude": {
+    "**/out_0.5.ndjson": true,
+    "**/out_0.5.ndjson.*": true,
+    "**/v3_sharecodes.txt": true
+  },
+  "files.watcherExclude": {
+    "**/out_0.5.ndjson": true,
+    "**/out_0.5.ndjson.*": true,
+    "**/v3_sharecodes.txt": true
+  },
+  "search.exclude": {
+    "**/out_0.5.ndjson": true,
+    "**/out_0.5.ndjson.*": true,
+    "**/v3_sharecodes.txt": true
+  }
+}
