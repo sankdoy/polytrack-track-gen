@@ -17,6 +17,8 @@ These scripts are for working with large dumps of PolyTrack tracks and for extra
 
 - Convert an NDJSON dump → `v3` share codes:
   - `node tools/v3/ndjson-to-sharecodes.mjs --input tracks.ndjson --output sharecodes.txt`
+- Filter a sharecode list to only tracks with both Start and Finish:
+  - `node tools/v3/filter-sharecodes.mjs --input sharecodes.txt --in-place`
 - Analyze piece adjacency using `v3` share codes:
   - `node tools/v3/analyze-sharecodes.mjs --input sharecodes.txt --limit 1000`
 - Extract a compact “connector rules” JSON (top adjacency hints per piece/rotation):
@@ -26,4 +28,3 @@ These scripts are for working with large dumps of PolyTrack tracks and for extra
 
 - Decode a `PolyTrack1...` reference track and list its piece IDs:
   - `node tools/polytrack1/decode.mjs "PolyTrack1...."`
-
