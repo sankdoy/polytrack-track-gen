@@ -4,3 +4,8 @@ node_modules/
 dist/
 tmp/
 tasks/
+*.ndjson
+*.jsonl
+out_*.json
+out_*.ndjson
+out_*.ndjson.*

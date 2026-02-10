@@ -63,22 +63,26 @@
       header .support {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 7px 12px;
+        gap: 8px;
+        padding: 8px 12px;
         border-radius: var(--radius);
-        border: 1px solid var(--border);
-        background: var(--panel);
-        color: var(--muted);
+        border: 1px solid rgba(136,153,204,0.5);
+        background: linear-gradient(135deg, rgba(136,153,204,0.22), rgba(125,184,138,0.14));
+        color: var(--text);
         text-decoration: none;
         font-size: 0.78rem;
         font-weight: 500;
-        transition: color 0.15s, border-color 0.15s;
+        transition: transform 0.15s, border-color 0.15s, background 0.15s;
       }
       header .support:hover {
-        color: var(--text);
         border-color: var(--accent);
+        transform: translateY(-1px);
+        background: linear-gradient(135deg, rgba(136,153,204,0.30), rgba(125,184,138,0.18));
       }
       header .support svg { width: 14px; height: 14px; flex-shrink: 0; }
+      header .support .support-text { display: flex; flex-direction: column; line-height: 1.1; }
+      header .support .support-title { font-weight: 650; font-size: 0.8rem; }
+      header .support .support-sub { color: rgba(208,208,220,0.75); font-size: 0.68rem; }
 
       .wrap {
         max-width: 920px;
@@ -300,7 +304,10 @@
           <path d="M18 10.2h1.1a2.9 2.9 0 0 1 0 5.8H17.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           <path d="M8 17.2V19a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
-        Support the project
+        <span class="support-text">
+          <span class="support-title">Buy me a coffee</span>
+          <span class="support-sub">Support new features</span>
+        </span>
       </a>
     </header>
 
@@ -313,10 +320,10 @@
           <input type="text" id="name" value="Generated Track" />
         </div>
 
-	        <div class="field">
-	          <label>Length <span class="val" id="lengthVal">30</span></label>
-	          <input type="range" id="length" min="10" max="5000" value="30" step="25" />
-	        </div>
+        <div class="field">
+          <label>Length <span class="val" id="lengthVal">500</span></label>
+          <input type="range" id="length" min="10" max="5000" value="500" step="1" />
+        </div>
 
         <div class="field">
           <label>Elevation (0-10) <span class="val" id="elevationVal">3</span></label>
@@ -328,10 +335,10 @@
           <input type="range" id="curviness" min="0" max="10" value="4" />
         </div>
 
-	        <div class="field">
-	          <label>Checkpoints <span class="val" id="checkpointsVal">2</span></label>
-	          <input type="range" id="checkpoints" min="0" max="500" value="2" />
-	        </div>
+        <div class="field">
+          <label>Checkpoints <span class="val" id="checkpointsVal">6</span></label>
+          <input type="range" id="checkpoints" min="0" max="500" value="6" step="1" />
+        </div>
 
         <div class="field">
           <label>Environment</label>
@@ -349,7 +356,7 @@
         </div>
 
         <hr class="divider" />
-        <h2>Advanced</h2>
+        <h2>Generation</h2>
 
 	        <div class="field">
 	          <label>Max Height <span class="val" id="maxHeightVal">24</span></label>
@@ -409,6 +416,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs"></script>
+    <script type="module" src="./app.mjs?v=2026-02-10"></script>
   </body>
 </html>
