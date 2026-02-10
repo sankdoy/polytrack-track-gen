@@ -394,11 +394,11 @@ export function generateTrack(params = {}) {
   };
 
   const placeSlopeUp = (longVariant) => {
-    const tiles = longVariant ? 2 : 1;
+    const footprintTiles = longVariant ? 2 : 1;
     const nextY = y + 1;
     if (nextY > maxHeightY) return false;
-    const fp = forwardFootprint(heading, tiles, 0, 1);
-    const exit = nextPos(x, y, z, heading, tiles);
+    const fp = forwardFootprint(heading, footprintTiles, 0, 1);
+    const exit = nextPos(x, y, z, heading, 1);
     if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
     placePiece(longVariant ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading, null, null, fp);
@@ -407,11 +407,11 @@ export function generateTrack(params = {}) {
   };
 
   const placeSlopeDown = (longVariant) => {
-    const tiles = longVariant ? 2 : 1;
+    const footprintTiles = longVariant ? 2 : 1;
     if (y <= 0) return false;
     const nextY = y - 1; // slope-down blocks are anchored at the lower (exit) height
-    const fp = forwardFootprint(heading, tiles, 0, 1);
-    const exit = nextPos(x, nextY, z, heading, tiles);
+    const fp = forwardFootprint(heading, footprintTiles, 0, 1);
+    const exit = nextPos(x, nextY, z, heading, 1);
     if (!canFootprint(x, nextY, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
     y = nextY;
@@ -455,15 +455,9 @@ export function generateTrack(params = {}) {
       newHeading = (heading + 1) % 4;
     }
     const isLong = variant === "long";
-    const tiles = isLong ? 3 : 1;
-    const fp = isLong ? turnSquareFootprint(heading, newHeading, tiles, 0, 0) : flatFootprint;
-    const exit = isLong
-      ? {
-          x: x + HEADING_DELTA[heading].dx * tiles + HEADING_DELTA[newHeading].dx * tiles,
-          y,
-          z: z + HEADING_DELTA[heading].dz * tiles + HEADING_DELTA[newHeading].dz * tiles,
-        }
-      : nextPos(x, y, z, newHeading, 1);
+    const footprintTiles = isLong ? 3 : 1;
+    const fp = isLong ? turnSquareFootprint(heading, newHeading, footprintTiles, 0, 0) : flatFootprint;
+    const exit = nextPos(x, y, z, newHeading, 1);
     if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, newHeading, false)) return false;
     // Prefer exits with more free neighbors (avoid dead ends)

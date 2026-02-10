@@ -1,4 +1,4 @@
-import { generateTrack, BlockTypeName } from "./track-web.mjs?v=2026-02-10.2";
+import { generateTrack, BlockTypeName } from "./track-web.mjs?v=2026-02-10.3";
 
 const $ = (id) => document.getElementById(id);
 
