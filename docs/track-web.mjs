@@ -13,8 +13,6 @@ export const BlockType = {
   TurnShort: 36,
   SlopeUpLong: 38,
   SlopeDownLong: 39,
-  TurnSLeft: 41,
-  TurnSRight: 42,
   IntersectionT: 43,
   IntersectionCross: 44,
   Checkpoint: 52,
@@ -183,8 +181,8 @@ export function generateTrack(params = {}) {
   const rng = createRNG(seed);
   const env = Environment[environment] ?? Environment.Summer;
 
-  const elevationProb = Math.max(0, Math.min(0.95, elevation * 0.1));
-  const turnProb = Math.max(0, Math.min(0.95, curviness * 0.18));
+  const elevationProb = Math.max(0, Math.min(0.8, elevation * 0.08));
+  const turnProb = Math.max(0, Math.min(0.8, curviness * 0.09));
   const intersectionProb = Math.max(0, Math.min(1, intersectionChance));
   const templateProb = Math.max(0, Math.min(1, templateChance));
   const maxHeightY = Math.max(0, Math.floor(maxHeight));
@@ -242,6 +240,16 @@ export function generateTrack(params = {}) {
     return true;
   };
 
+  // Check how many free neighbors a cell has (lookahead for avoiding dead ends)
+  const countFreeNeighbors = (px, py, pz) => {
+    let free = 0;
+    for (let h = 0; h < 4; h++) {
+      const n = nextPos(px, py, pz, h);
+      if (isFree(n.x, n.y, n.z)) free++;
+    }
+    return free;
+  };
+
   // ---- Place Start ----
   placePiece(BlockType.Start, heading, null, 0);
   ({ x, y, z } = nextPos(x, y, z, heading));
@@ -250,24 +258,44 @@ export function generateTrack(params = {}) {
   const checkpointIntervalRaw = numCheckpoints > 0 ? Math.floor(trackLength / (numCheckpoints + 1)) : Infinity;
   const checkpointInterval = Number.isFinite(checkpointIntervalRaw) && checkpointIntervalRaw >= 1 ? checkpointIntervalRaw : 1;
 
+  // Track turn tendency: creates sweeping curves instead of random zigzag
+  let turnBias = rng() < 0.5 ? 1 : -1; // 1 = prefer right, -1 = prefer left
+  let turnBiasCounter = 0;
+  const BIAS_SWITCH_INTERVAL = 3 + Math.floor(rng() * 5);
+
   // ---- Templates from real track patterns ----
   const templates = [
+    // Straight runs
     ["straight", "straight", "straight"],
-    ["straight", "straight", "straight", "straight"],
+    ["straight", "straight", "straight", "straight", "straight"],
+    // Chicane (S-shape from turns)
     ["turnR", "straight", "turnL"],
     ["turnL", "straight", "turnR"],
     ["turnR", "straight", "straight", "turnL"],
-    ["sLeft", "straight", "sRight"],
-    ["sRight", "straight", "sLeft"],
-    ["up", "down"],
+    ["turnL", "straight", "straight", "turnR"],
+    // Hill patterns
     ["up", "straight", "down"],
-    ["up", "steepUp", "down", "down"],
-    ["straight", "straight", "up", "steepUp", "down"],
+    ["up", "up", "straight", "down", "down"],
     ["up", "up", "up", "down", "down", "down"],
-    ["upLong", "upLong", "upLong"],
-    ["turnShort", "turnShort", "turnShort"],
-    ["straight", "straight", "turnShort", "turnShort"],
-    ["turnShort", "straight", "straight", "turnShort"],
+    ["up", "steepUp", "straight", "down", "down"],
+    // Hill with turn at top
+    ["up", "up", "turnR", "down", "down"],
+    ["up", "up", "turnL", "down", "down"],
+    // Sweeping curves
+    ["turnR", "turnR", "straight", "straight"],
+    ["turnL", "turnL", "straight", "straight"],
+    ["straight", "turnR", "straight", "turnR"],
+    ["straight", "turnL", "straight", "turnL"],
+    // U-turn
+    ["turnR", "turnR"],
+    ["turnL", "turnL"],
+    // Long gentle slopes
+    ["upLong", "straight", "straight", "downLong"],
+    ["upLong", "upLong", "downLong", "downLong"],
+    // Mixed elevation + turn
+    ["up", "turnR", "straight", "down"],
+    ["up", "turnL", "straight", "down"],
+    ["straight", "up", "straight", "turnR", "down", "straight"],
   ];
   const actionQueue = [];
 
@@ -319,6 +347,18 @@ export function generateTrack(params = {}) {
     return true;
   };
 
+  const placeSteepDown = () => {
+    if (y < 2) return false;
+    const nextY = y - 2;
+    const exit = nextPos(x, nextY, z, heading);
+    if (!isFree(x, nextY, z)) return false;
+    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading)) return false;
+    y = nextY;
+    placePiece(BlockType.Slope, (heading + 2) % 4, null, null);
+    x = exit.x; z = exit.z;
+    return true;
+  };
+
   const placeTurn90 = (turnRight, variant) => {
     let newHeading, turnRotation;
     if (turnRight) {
@@ -331,6 +371,8 @@ export function generateTrack(params = {}) {
     const exit = nextPos(x, y, z, newHeading);
     if (!isFree(x, y, z)) return false;
     if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, newHeading)) return false;
+    // Prefer exits with more free neighbors (avoid dead ends)
+    if (countFreeNeighbors(exit.x, exit.y, exit.z) < 1) return false;
     const blockType = variant === "short" ? BlockType.TurnShort
                     : variant === "long"  ? BlockType.TurnLong3
                     : BlockType.TurnSharp;
@@ -340,40 +382,84 @@ export function generateTrack(params = {}) {
     return true;
   };
 
-  const placeSCurve = (goLeft) => {
-    // S-curve: advance forward + shift laterally, same heading
-    const leftDir = (heading + 1) % 4;
-    const rightDir = (heading + 3) % 4;
-    const lateralDir = goLeft ? leftDir : rightDir;
-    const ex = x + HEADING_DELTA[heading].dx + HEADING_DELTA[lateralDir].dx;
-    const ez = z + HEADING_DELTA[heading].dz + HEADING_DELTA[lateralDir].dz;
-    if (!isFree(x, y, z)) return false;
-    if (!isFree(ex, y, ez)) return false;
-    placePiece(goLeft ? BlockType.TurnSLeft : BlockType.TurnSRight, heading, null, null);
-    x = ex; z = ez;
-    return true;
-  };
-
   // Weighted turn type selection
   const pickTurnVariant = () => {
     const r = rng();
-    if (r < 0.45) return "short";  // TurnShort most common (44% of real tracks)
-    if (r < 0.75) return "sharp";  // TurnSharp (28% of real tracks)
-    return "long";                  // TurnLong3 (29% of real tracks)
+    if (r < 0.40) return "short";
+    if (r < 0.70) return "sharp";
+    return "long";
+  };
+
+  // Choose turn direction based on bias (creates flowing curves)
+  const pickTurnDirection = () => {
+    turnBiasCounter++;
+    if (turnBiasCounter >= BIAS_SWITCH_INTERVAL) {
+      turnBias = -turnBias;
+      turnBiasCounter = 0;
+    }
+    return rng() < 0.7 ? (turnBias > 0) : (turnBias < 0);
   };
 
   // ---- Build the track ----
 
+  let piecesPlaced = 0;
+  let consecutiveStraight = 0;
+
   for (let i = 0; i < trackLength; i++) {
+    // Handle occupied cell
     if (isOccupied(x, y, z)) {
       if (ensureIntersectionCrossAtCell(x, y, z, heading)) {
         ({ x, y, z } = nextPos(x, y, z, heading));
         continue;
       }
-      break;
+      // Try to escape: multiple strategies
+      let escaped = false;
+      // Strategy 1: turn left or right
+      for (const dir of [1, 3]) {
+        const tryHeading = (heading + dir) % 4;
+        const tryExit = nextPos(x, y, z, tryHeading);
+        if (isFree(tryExit.x, tryExit.y, tryExit.z)) {
+          heading = tryHeading;
+          ({ x, y, z } = tryExit);
+          escaped = true;
+          break;
+        }
+      }
+      // Strategy 2: go up/down at current position
+      if (!escaped) {
+        for (const dy of [1, -1]) {
+          const tryY = y + dy;
+          if (tryY >= 0 && tryY <= maxHeightY && isFree(x, tryY, z)) {
+            y = tryY;
+            escaped = true;
+            break;
+          }
+        }
+      }
+      // Strategy 3: reverse
+      if (!escaped) {
+        const reverseH = (heading + 2) % 4;
+        const tryExit = nextPos(x, y, z, reverseH);
+        if (isFree(tryExit.x, tryExit.y, tryExit.z)) {
+          heading = reverseH;
+          ({ x, y, z } = tryExit);
+          escaped = true;
+        }
+      }
+      if (!escaped) break;
     }
 
-    const shouldCheckpoint = checkpointsPlaced < numCheckpoints && (i + 1) % checkpointInterval === 0;
+    // Force remaining checkpoints near the end
+    const piecesLeft = trackLength - i;
+    const checkpointsRemaining = numCheckpoints - checkpointsPlaced;
+    const shouldCheckpoint =
+      (checkpointsPlaced < numCheckpoints && (i + 1) % checkpointInterval === 0) ||
+      (checkpointsRemaining > 0 && piecesLeft <= checkpointsRemaining + 2);
+
+    // Force descent near end if elevated
+    const nearEnd = piecesLeft <= y + 3;
+    const shouldDescend = nearEnd && y > 0;
+
     let placed = false;
 
     for (let attempt = 0; attempt < attemptsPerPiece && !placed; attempt++) {
@@ -381,12 +467,19 @@ export function generateTrack(params = {}) {
       if (shouldCheckpoint && attempt === 0) {
         actionQueue.length = 0;
         placed = placeStraightLike(BlockType.Checkpoint, checkpointsPlaced);
-        if (placed) checkpointsPlaced++;
+        if (placed) { checkpointsPlaced++; piecesPlaced++; consecutiveStraight = 0; }
         continue;
       }
 
+      // Force descent when near end and elevated
+      if (shouldDescend && attempt < 3) {
+        if (y >= 2 && allowSteepSlopes) placed = placeSteepDown();
+        if (!placed) placed = placeSlopeDown(false);
+        if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
+      }
+
       // Try template on first attempt
-      if (attempt === 0 && !shouldCheckpoint) {
+      if (attempt === 0 && !shouldCheckpoint && !shouldDescend) {
         if (actionQueue.length === 0 && templateProb > 0 && rng() < templateProb) {
           actionQueue.push(...templates[Math.floor(rng() * templates.length)]);
         }
@@ -397,9 +490,6 @@ export function generateTrack(params = {}) {
           if (a === "straight") ok = placeStraightLike(BlockType.Straight, null);
           else if (a === "turnR") ok = placeTurn90(true, pickTurnVariant());
           else if (a === "turnL") ok = placeTurn90(false, pickTurnVariant());
-          else if (a === "turnShort") ok = placeTurn90(rng() < 0.5, "short");
-          else if (a === "sLeft") ok = placeSCurve(true);
-          else if (a === "sRight") ok = placeSCurve(false);
           else if (a === "up") ok = placeSlopeUp(rng() < 0.3);
           else if (a === "upLong") ok = placeSlopeUp(true);
           else if (a === "down") ok = placeSlopeDown(rng() < 0.3);
@@ -408,54 +498,118 @@ export function generateTrack(params = {}) {
           if (ok) {
             actionQueue.shift();
             placed = true;
+            piecesPlaced++;
+            consecutiveStraight = (a === "straight") ? consecutiveStraight + 1 : 0;
             continue;
           }
           actionQueue.length = 0;
         }
       }
 
-      // Elevation
+      // Elevation - bias toward descent when high, ascent when at ground
       if (!placed && elevationProb > 0 && rng() < elevationProb) {
         const r = rng();
-        if (allowSteepSlopes && r < 0.2) placed = placeSlopeSteep();
-        else if (r < 0.55) placed = placeSlopeUp(rng() < 0.3);
-        else placed = placeSlopeDown(rng() < 0.3);
-        if (placed) continue;
+        const descentBias = Math.min(0.6, y * 0.1); // Higher = more likely to descend
+        if (r < descentBias) {
+          placed = placeSlopeDown(rng() < 0.3);
+          if (!placed && allowSteepSlopes && y >= 2) placed = placeSteepDown();
+        } else if (allowSteepSlopes && r < descentBias + 0.15) {
+          placed = placeSlopeSteep();
+        } else {
+          placed = placeSlopeUp(rng() < 0.3);
+        }
+        if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
       }
 
-      // Turns and S-curves
-      if (!placed && turnProb > 0 && rng() < turnProb) {
-        const r = rng();
-        if (r < 0.15) {
-          placed = placeSCurve(rng() < 0.5);
-        } else {
-          const variant = pickTurnVariant();
-          placed = placeTurn90(rng() < 0.5, variant);
-        }
-        if (placed) continue;
+      // Turns - use bias for flowing curves
+      // Also force a turn if we've had too many straight pieces
+      const forceTurn = consecutiveStraight >= 5 + Math.floor(rng() * 4);
+      if (!placed && (forceTurn || (turnProb > 0 && rng() < turnProb))) {
+        const variant = pickTurnVariant();
+        const turnRight = pickTurnDirection();
+        placed = placeTurn90(turnRight, variant);
+        // If biased direction fails, try the other
+        if (!placed) placed = placeTurn90(!turnRight, variant);
+        if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
       }
 
       // Default: straight
       placed = placeStraightLike(BlockType.Straight, null);
+      if (placed) { piecesPlaced++; consecutiveStraight++; }
     }
 
     if (!placed) break;
   }
 
-  // ---- Place Finish ----
-  for (let n = 0; n < 8 && isOccupied(x, y, z); n++) {
-    if (!ensureIntersectionCrossAtCell(x, y, z, heading)) break;
-    ({ x, y, z } = nextPos(x, y, z, heading));
+  // ---- Descend to ground before checkpoints/finish ----
+  let descentAttempts = 0;
+  while (y > 0 && descentAttempts < 20) {
+    descentAttempts++;
+    if (y >= 2 && allowSteepSlopes && isFree(x, y - 2, z)) {
+      const exit = nextPos(x, y - 2, z, heading);
+      if (isFree(x, y - 2, z) && (isFree(exit.x, y - 2, exit.z) || descentAttempts > 15)) {
+        y -= 2;
+        placePiece(BlockType.Slope, (heading + 2) % 4, null, null);
+        const e = nextPos(x, y, z, heading);
+        x = e.x; z = e.z;
+        continue;
+      }
+    }
+    if (y >= 1 && isFree(x, y - 1, z)) {
+      const exit = nextPos(x, y - 1, z, heading);
+      if (isFree(x, y - 1, z) && (isFree(exit.x, y - 1, exit.z) || descentAttempts > 15)) {
+        y -= 1;
+        placePiece(BlockType.SlopeDown, heading, null, null);
+        const e = nextPos(x, y, z, heading);
+        x = e.x; z = e.z;
+        continue;
+      }
+    }
+    // Try turning to find a descent path
+    const tryH = (heading + (rng() < 0.5 ? 1 : 3)) % 4;
+    const tryExit = nextPos(x, y, z, tryH);
+    if (isFree(x, y, z) && isFree(tryExit.x, tryExit.y, tryExit.z)) {
+      placeStraightLike(BlockType.Straight, null);
+      heading = tryH;
+    } else {
+      break;
+    }
   }
 
+  // ---- Ensure all checkpoints are placed before finish ----
+  while (checkpointsPlaced < numCheckpoints) {
+    if (!isFree(x, y, z)) break;
+    const exit = nextPos(x, y, z, heading);
+    if (!isFree(exit.x, exit.y, exit.z) && !isFree(exit.x, y, exit.z)) break;
+    placePiece(BlockType.Checkpoint, heading, checkpointsPlaced, null);
+    checkpointsPlaced++;
+    x = exit.x; z = exit.z;
+  }
+
+  // ---- Place Finish ----
   if (isFree(x, y, z)) {
-    placePiece(BlockType.Finish, heading, numCheckpoints, null);
+    placePiece(BlockType.Finish, heading, null, null);
   } else {
-    const last = lastPlacedKey ? placedByCell.get(lastPlacedKey) : null;
-    if (last && last.blockType === BlockType.Straight) {
-      last.blockType = BlockType.Finish;
-      last.rotation = heading;
-      last.checkpointOrder = numCheckpoints;
+    // Try adjacent cells in all directions
+    let finishPlaced = false;
+    const prevX = x - HEADING_DELTA[heading].dx;
+    const prevZ = z - HEADING_DELTA[heading].dz;
+    for (const tryH of [heading, (heading + 1) % 4, (heading + 3) % 4, (heading + 2) % 4]) {
+      const alt = nextPos(prevX, y, prevZ, tryH);
+      if (isFree(alt.x, alt.y, alt.z)) {
+        x = alt.x; y = alt.y; z = alt.z;
+        placePiece(BlockType.Finish, tryH, null, null);
+        finishPlaced = true;
+        break;
+      }
+    }
+    // Last resort: replace last piece with finish
+    if (!finishPlaced) {
+      const last = lastPlacedKey ? placedByCell.get(lastPlacedKey) : null;
+      if (last && last.blockType !== BlockType.Start && last.blockType !== BlockType.Checkpoint) {
+        last.blockType = BlockType.Finish;
+        last.checkpointOrder = null;
+      }
     }
   }
 
