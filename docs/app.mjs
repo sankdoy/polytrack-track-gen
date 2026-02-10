@@ -1,4 +1,4 @@
-import { generateTrack, BlockTypeName } from "./track-web.mjs?v=2026-02-10.3";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-10.4";
 
 const $ = (id) => document.getElementById(id);
 
@@ -37,6 +37,16 @@ bindRange("maxAttemptsPerPiece");
 bindRange("intersectionChance", (v) => Number(v).toFixed(2));
 bindRange("templateChance", (v) => Number(v).toFixed(2));
 
+const manualScenarioEl = $("manualScenario");
+if (manualScenarioEl) {
+  for (const s of manualMiniTrackScenarios) {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = s.label;
+    manualScenarioEl.appendChild(opt);
+  }
+}
+
 const updatedEl = $("updated");
 if (updatedEl) {
   const d = new Date(document.lastModified);
@@ -52,6 +62,7 @@ function readParams() {
   const seed = seedRaw ? Number(seedRaw) : Date.now();
   return {
     name: $("name").value || "Generated Track",
+    manualScenarioId: $("manualScenario")?.value || "",
     length: Number($("length").value),
     elevation: Number($("elevation").value),
     curviness: Number($("curviness").value),
@@ -126,7 +137,11 @@ function summarizeResult(result) {
     .map((p, i) => `${i}: ${BlockTypeName[p.blockType] || p.blockType}  (${p.x},${p.y},${p.z}) rot=${p.rotation}`)
     .join("\n");
 
-  return `pieces: ${total}\nbyType(top): ${top}\n\nsequence(first 40):\n${seqLines || "(not available)"}`;
+  const manualLine = result.manualScenarioLabel
+    ? `\n\nmanualScenario: ${result.manualScenarioLabel} (${result.manualScenarioId || "unknown"})`
+    : "";
+
+  return `pieces: ${total}\nbyType(top): ${top}\n\nsequence(first 40):\n${seqLines || "(not available)"}${manualLine}`;
 }
 
 async function generateBatch() {
@@ -136,6 +151,25 @@ async function generateBatch() {
 
   try {
     const base = readParams();
+
+    if (base.manualScenarioId) {
+      const r = generateManualMiniTrack({
+        scenarioId: base.manualScenarioId,
+        name: base.name,
+        environment: base.environment,
+      });
+      renderResults([
+        {
+          name: `${base.name} — ${r.manualScenarioLabel}`,
+          seed: "manual",
+          shareCode: r.shareCode,
+          details: summarizeResult(r),
+        },
+      ]);
+      setStatus("Manual mini-track generated", "good");
+      return;
+    }
+
     const requestedBatch = Number($("batch").value) || 1;
     let batchMax = 50;
     if (base.length >= 3000) batchMax = 3;

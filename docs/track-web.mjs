@@ -138,6 +138,132 @@ export function encodeV3ShareCode(name, trackData) {
   return "v3" + nameLenBytes + nameEncoded + trackEncoded;
 }
 
+// ---- Manual mini-tracks (for debugging alignment) ----
+
+export const manualMiniTrackScenarios = [
+  { id: "start_straight_finish", label: "Start → Straight → Finish", steps: [{ kind: "straight" }] },
+
+  { id: "start_turnShort_R_finish", label: "Start → TurnShort (R) → Finish", steps: [{ kind: "turn", dir: "R", variant: "short" }] },
+  { id: "start_turnShort_L_finish", label: "Start → TurnShort (L) → Finish", steps: [{ kind: "turn", dir: "L", variant: "short" }] },
+
+  { id: "start_turnSharp_R_finish", label: "Start → TurnSharp (R) → Finish", steps: [{ kind: "turn", dir: "R", variant: "sharp" }] },
+  { id: "start_turnSharp_L_finish", label: "Start → TurnSharp (L) → Finish", steps: [{ kind: "turn", dir: "L", variant: "sharp" }] },
+
+  { id: "start_turnLong3_R_exit3_finish", label: "Start → TurnLong3 (R, exit=3) → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 3 }] },
+  { id: "start_turnLong3_R_exit2_finish", label: "Start → TurnLong3 (R, exit=2) → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 2 }] },
+  { id: "start_turnLong3_R_exit4_finish", label: "Start → TurnLong3 (R, exit=4) → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 4 }] },
+
+  { id: "start_turnLong3_L_exit3_finish", label: "Start → TurnLong3 (L, exit=3) → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 3 }] },
+  { id: "start_turnLong3_L_exit2_finish", label: "Start → TurnLong3 (L, exit=2) → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 2 }] },
+  { id: "start_turnLong3_L_exit4_finish", label: "Start → TurnLong3 (L, exit=4) → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 4 }] },
+
+  { id: "start_turnLong3_R_exit3_straight_finish", label: "Start → TurnLong3 (R, exit=3) → Straight → Finish", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 3 }, { kind: "straight" }] },
+  { id: "start_turnLong3_L_exit3_straight_finish", label: "Start → TurnLong3 (L, exit=3) → Straight → Finish", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 3 }, { kind: "straight" }] },
+
+  { id: "start_up_finish", label: "Start → SlopeUp → Finish", steps: [{ kind: "up", long: false }] },
+  { id: "start_upLong_finish", label: "Start → SlopeUpLong → Finish", steps: [{ kind: "up", long: true }] },
+
+  { id: "start_up_down_finish", label: "Start → SlopeUp → SlopeDown → Finish", steps: [{ kind: "up", long: false }, { kind: "down", long: false }] },
+  { id: "start_upLong_downLong_finish", label: "Start → SlopeUpLong → SlopeDownLong → Finish", steps: [{ kind: "up", long: true }, { kind: "down", long: true }] },
+
+  { id: "start_upLong_straight_downLong_finish", label: "Start → SlopeUpLong → Straight → SlopeDownLong → Finish", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }] },
+
+  { id: "start_turnShort_R_up_finish", label: "Start → TurnShort (R) → SlopeUp → Finish", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: false }] },
+  { id: "start_up_turnShort_R_finish", label: "Start → SlopeUp → TurnShort (R) → Finish", steps: [{ kind: "up", long: false }, { kind: "turn", dir: "R", variant: "short" }] },
+];
+
+function getScenario(id) {
+  const s = manualMiniTrackScenarios.find((x) => x.id === id);
+  if (!s) throw new Error(`Unknown manual scenario: ${id}`);
+  return s;
+}
+
+export function generateManualMiniTrack(params = {}) {
+  const {
+    scenarioId = "start_straight_finish",
+    name = "Manual Mini Track",
+    environment = "Summer",
+  } = params;
+
+  const env = Environment[environment] ?? Environment.Summer;
+  const trackData = new TrackData(env, 0);
+  const placedSequence = [];
+
+  const scenario = getScenario(scenarioId);
+
+  let x = 0, y = 0, z = 0;
+  let heading = 0; // 0=N, 1=W, 2=S, 3=E (matches HEADING_DELTA)
+
+  const add = (blockType, rotation, checkpointOrder = null, startOrder = null) => {
+    trackData.addPart(x, y, z, blockType, rotation, RotationAxis.YPositive, ColorStyle.Default, checkpointOrder, startOrder);
+    placedSequence.push({ x, y, z, blockType, rotation });
+  };
+
+  const move = (h, tiles = 1) => {
+    x += HEADING_DELTA[h].dx * tiles;
+    z += HEADING_DELTA[h].dz * tiles;
+  };
+
+  // Start at origin, then advance 1 tile forward.
+  add(BlockType.Start, heading, null, 0);
+  move(heading, 1);
+
+  for (const step of scenario.steps) {
+    if (step.kind === "straight") {
+      add(BlockType.Straight, heading);
+      move(heading, 1);
+      continue;
+    }
+
+    if (step.kind === "up") {
+      const tiles = step.long ? 2 : 1;
+      add(step.long ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading);
+      move(heading, tiles);
+      y += 1;
+      continue;
+    }
+
+    if (step.kind === "down") {
+      const tiles = step.long ? 2 : 1;
+      // Match generator behavior: slope-down pieces are anchored at the lower (exit) height.
+      y -= 1;
+      if (y < 0) y = 0;
+      add(step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading);
+      move(heading, tiles);
+      continue;
+    }
+
+    if (step.kind === "turn") {
+      const turnRight = step.dir === "R";
+      let newHeading, turnRotation;
+      if (turnRight) {
+        turnRotation = heading;
+        newHeading = (heading + 3) % 4;
+      } else {
+        turnRotation = (heading + 3) % 4;
+        newHeading = (heading + 1) % 4;
+      }
+      const isLong = step.variant === "long";
+      const exitTiles = Number.isFinite(step.exitTiles) ? step.exitTiles : (isLong ? 3 : 1);
+      const blockType = step.variant === "short" ? BlockType.TurnShort
+                      : step.variant === "long"  ? BlockType.TurnLong3
+                      : BlockType.TurnSharp;
+
+      add(blockType, turnRotation);
+      heading = newHeading;
+      move(heading, exitTiles);
+      continue;
+    }
+
+    throw new Error(`Unknown step kind: ${step?.kind}`);
+  }
+
+  add(BlockType.Finish, heading);
+
+  const shareCode = encodeV3ShareCode(name, trackData);
+  return { shareCode, trackData, name, seed: null, placedSequence, manualScenarioId: scenarioId, manualScenarioLabel: scenario.label };
+}
+
 // ---- Generator helpers ----
 
 const TILE = 4;
