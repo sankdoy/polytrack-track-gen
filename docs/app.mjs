@@ -1,0 +1,153 @@
+import { generateTrack } from "./track-web.mjs";
+
+const $ = (id) => document.getElementById(id);
+
+function bindRange(id, formatter) {
+  const el = $(id);
+  const val = $(id + "Val");
+  const fmt = formatter || ((v) => v);
+  const update = () => { if (val) val.textContent = fmt(el.value); };
+  el.addEventListener("input", update);
+  update();
+}
+
+function setStatus(text, kind) {
+  const s = $("status");
+  s.classList.remove("bad", "good");
+  if (kind) s.classList.add(kind);
+  s.textContent = text || "";
+}
+
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function copyText(text) {
+  return navigator.clipboard.writeText(text);
+}
+
+bindRange("length");
+bindRange("elevation");
+bindRange("curviness");
+bindRange("checkpoints");
+bindRange("maxHeight");
+bindRange("maxAttemptsPerPiece");
+bindRange("intersectionChance", (v) => Number(v).toFixed(2));
+bindRange("templateChance", (v) => Number(v).toFixed(2));
+
+$("rollSeed").addEventListener("click", () => {
+  $("seed").value = String(Math.floor(Math.random() * 1_000_000));
+});
+
+function readParams() {
+  const seedRaw = $("seed").value.trim();
+  const seed = seedRaw ? Number(seedRaw) : Date.now();
+  return {
+    name: $("name").value || "Generated Track",
+    length: Number($("length").value),
+    elevation: Number($("elevation").value),
+    curviness: Number($("curviness").value),
+    numCheckpoints: Number($("checkpoints").value),
+    environment: $("environment").value,
+    includeScenery: $("scenery").checked,
+    maxHeight: Number($("maxHeight").value),
+    maxAttemptsPerPiece: Number($("maxAttemptsPerPiece").value),
+    allowSteepSlopes: $("allowSteepSlopes").checked,
+    allowIntersections: $("allowIntersections").checked,
+    intersectionChance: Number($("intersectionChance").value),
+    templateChance: Number($("templateChance").value),
+    seed,
+  };
+}
+
+function renderResults(items) {
+  const out = $("output");
+  const container = $("results");
+  container.innerHTML = "";
+
+  for (const r of items) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="card-title">${esc(r.name)}</div>
+        <div class="card-meta">seed: ${esc(r.seed)}</div>
+      </div>
+      <div class="code">${esc(r.shareCode)}</div>
+      <div class="actions">
+        <button class="btn secondary" type="button">Copy</button>
+      </div>
+      <details>
+        <summary>Show details</summary>
+        <div class="desc">${esc(r.details)}</div>
+      </details>
+    `;
+    card.querySelector("button").addEventListener("click", async () => {
+      try {
+        await copyText(r.shareCode);
+        setStatus("Copied share code", "good");
+        setTimeout(() => setStatus(""), 1200);
+      } catch (e) {
+        setStatus("Clipboard copy failed", "bad");
+      }
+    });
+
+    container.appendChild(card);
+  }
+
+  out.style.display = "block";
+}
+
+function summarizeTrack(trackData) {
+  let total = 0;
+  const counts = new Map();
+  for (const [blockType, parts] of trackData.parts) {
+    total += parts.length;
+    counts.set(blockType, parts.length);
+  }
+  const top = Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([t, c]) => `${t}:${c}`)
+    .join(", ");
+  return `pieces: ${total}\nbyType(top): ${top}`;
+}
+
+async function generateBatch() {
+  const btn = $("generateBtn");
+  btn.disabled = true;
+  setStatus("Generating…");
+
+  try {
+    const base = readParams();
+    const batch = Math.max(1, Math.min(50, Number($("batch").value) || 1));
+
+    const results = [];
+    for (let i = 0; i < batch; i++) {
+      const seed = (base.seed || Date.now()) + i;
+      const name = batch > 1 ? `${base.name} #${i + 1}` : base.name;
+      const r = generateTrack({ ...base, name, seed });
+      results.push({
+        name,
+        seed,
+        shareCode: r.shareCode,
+        details: summarizeTrack(r.trackData),
+      });
+    }
+
+    renderResults(results);
+    setStatus(`${results.length} track(s) generated`, "good");
+  } catch (e) {
+    setStatus(e?.message || String(e), "bad");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$("generateBtn").addEventListener("click", generateBatch);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !$("generateBtn").disabled) generateBatch();
+});
+
