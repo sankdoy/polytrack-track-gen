@@ -339,6 +339,10 @@ export function generateTrack(params = {}) {
     placedByCell.set(anchorKey(x, y, z), part);
     placedSequence.push(part);
     lastPlacedKey = anchorKey(x, y, z);
+    if (footprintDebug && placedSequence.length <= footprintDebugLimit) {
+      const idx = placedSequence.length - 1;
+      console.log(`piece#${idx}: ${BlockTypeName?.[blockType]||blockType} @ (${x},${y},${z}) rot=${rotation} footprint=${JSON.stringify(footprint || flatFootprint)}`);
+    }
     if (!reserveFootprint(x, y, z, blockType, footprint || flatFootprint)) {
       throw new Error("Internal: occupied footprint");
     }
