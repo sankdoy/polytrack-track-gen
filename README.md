@@ -22,3 +22,7 @@ If you have a huge single-line JSON array (VS Code may show `RangeError: Invalid
 Then you can split it into smaller chunks:
 
 `split -b 100m out_0.5.ndjson out_0.5.ndjson.part.`
+
+To convert an NDJSON dump into `v3` share codes:
+
+`node tools/ndjson-to-v3-sharecodes.mjs --input out_0.5.ndjson --output sharecodes.txt`
