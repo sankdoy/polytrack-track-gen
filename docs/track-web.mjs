@@ -140,11 +140,13 @@ export function encodeV3ShareCode(name, trackData) {
 
 // ---- Generator helpers ----
 
+const TILE = 4;
+
 const HEADING_DELTA = [
-  { dx: 0, dz: -4 },  // 0 = North (-Z)
-  { dx: -4, dz: 0 },  // 1 = West (-X)
-  { dx: 0, dz: 4 },   // 2 = South (+Z)
-  { dx: 4, dz: 0 },   // 3 = East (+X)
+  { dx: 0, dz: -TILE },  // 0 = North (-Z)
+  { dx: -TILE, dz: 0 },  // 1 = West (-X)
+  { dx: 0, dz: TILE },   // 2 = South (+Z)
+  { dx: TILE, dz: 0 },   // 3 = East (+X)
 ];
 
 function createRNG(seed) {
@@ -191,37 +193,114 @@ export function generateTrack(params = {}) {
   let x = 0, y = 0, z = 0;
   let heading = 0;
 
-  const occupied = new Set();
   const placedByCell = new Map();
-  const cellKey = (px, py, pz) => `${px},${py},${pz}`;
-  const markOccupied = (px, py, pz) => occupied.add(cellKey(px, py, pz));
-  const isOccupied = (px, py, pz) => occupied.has(cellKey(px, py, pz));
-  const isFree = (px, py, pz) => !isOccupied(px, py, pz) && py >= 0;
-  const nextPos = (cx, cy, cz, h) => ({
-    x: cx + HEADING_DELTA[h].dx,
+  const placedSequence = [];
+  const anchorKey = (px, py, pz) => `${px},${py},${pz}`;
+  const xzKey = (px, pz) => `${px},${pz}`;
+
+  // Track occupancy per (x,z) with vertical spans.
+  // This prevents illegal overlaps while still allowing overpasses.
+  const occupiedXZ = new Map(); // xzKey -> Array<{ yMin, yMax, blockType }>
+  const spansOverlap = (aMin, aMax, bMin, bMax) => !(aMax < bMin || aMin > bMax);
+  const collidesAt = (px, pz, yMin, yMax) => {
+    const spans = occupiedXZ.get(xzKey(px, pz));
+    if (!spans) return null;
+    for (const s of spans) {
+      if (spansOverlap(yMin, yMax, s.yMin, s.yMax)) return s;
+    }
+    return null;
+  };
+  const canReserveAt = (px, pz, yMin, yMax) => yMin >= 0 && !collidesAt(px, pz, yMin, yMax);
+  const reserveAt = (px, pz, yMin, yMax, blockType) => {
+    const key = xzKey(px, pz);
+    const spans = occupiedXZ.get(key);
+    const entry = { yMin, yMax, blockType };
+    if (spans) spans.push(entry);
+    else occupiedXZ.set(key, [entry]);
+  };
+  const isFree = (px, py, pz) => canReserveAt(px, pz, py, py);
+  const hasAnchor = (px, py, pz) => placedByCell.has(anchorKey(px, py, pz));
+
+  const nextPos = (cx, cy, cz, h, tiles = 1) => ({
+    x: cx + HEADING_DELTA[h].dx * tiles,
     y: cy,
-    z: cz + HEADING_DELTA[h].dz,
+    z: cz + HEADING_DELTA[h].dz * tiles,
   });
 
+  const canFootprint = (ax, ay, az, footprint) => {
+    for (const c of footprint) {
+      const wx = ax + c.dx;
+      const wz = az + c.dz;
+      const yMin = ay + c.yMin;
+      const yMax = ay + c.yMax;
+      if (!canReserveAt(wx, wz, yMin, yMax)) return false;
+    }
+    return true;
+  };
+
+  const reserveFootprint = (ax, ay, az, blockType, footprint) => {
+    for (const c of footprint) {
+      const wx = ax + c.dx;
+      const wz = az + c.dz;
+      const yMin = ay + c.yMin;
+      const yMax = ay + c.yMax;
+      if (!canReserveAt(wx, wz, yMin, yMax)) return false;
+    }
+    for (const c of footprint) {
+      reserveAt(ax + c.dx, az + c.dz, ay + c.yMin, ay + c.yMax, blockType);
+    }
+    return true;
+  };
+
+  const flatFootprint = [{ dx: 0, dz: 0, yMin: 0, yMax: 0 }];
+  const slopeFootprint1 = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
+  const slopeFootprint2 = [{ dx: 0, dz: 0, yMin: 0, yMax: 2 }];
+
+  const forwardFootprint = (h, tiles, yMin, yMax) => {
+    const fp = [];
+    for (let i = 0; i < tiles; i++) {
+      fp.push({ dx: HEADING_DELTA[h].dx * i, dz: HEADING_DELTA[h].dz * i, yMin, yMax });
+    }
+    return fp;
+  };
+
+  const turnSquareFootprint = (forwardHeading, sideHeading, tiles, yMin, yMax) => {
+    const fp = [];
+    for (let f = 0; f < tiles; f++) {
+      for (let s = 0; s < tiles; s++) {
+        fp.push({
+          dx: HEADING_DELTA[forwardHeading].dx * f + HEADING_DELTA[sideHeading].dx * s,
+          dz: HEADING_DELTA[forwardHeading].dz * f + HEADING_DELTA[sideHeading].dz * s,
+          yMin,
+          yMax,
+        });
+      }
+    }
+    return fp;
+  };
+
   let lastPlacedKey = null;
-  const placePiece = (blockType, rotation, checkpointOrder, startOrder) => {
-    placedByCell.set(cellKey(x, y, z), {
+  const placePiece = (blockType, rotation, checkpointOrder, startOrder, footprint) => {
+    const part = {
       x, y, z, blockType, rotation,
       rotationAxis: RotationAxis.YPositive,
       color: ColorStyle.Default,
       checkpointOrder, startOrder,
-    });
-    lastPlacedKey = cellKey(x, y, z);
-    markOccupied(x, y, z);
+    };
+    placedByCell.set(anchorKey(x, y, z), part);
+    placedSequence.push(part);
+    lastPlacedKey = anchorKey(x, y, z);
+    if (!reserveFootprint(x, y, z, blockType, footprint || flatFootprint)) {
+      throw new Error("Internal: occupied footprint");
+    }
   };
 
   // Intersection helpers
   const axisForHeading = (h) => (h === 0 || h === 2) ? "NS" : "EW";
   const canExitIntoIntersection = (nx, ny, nz, travelHeading) => {
     if (!allowIntersections) return false;
-    if (!isOccupied(nx, ny, nz)) return false;
     if (rng() >= intersectionProb) return false;
-    const existing = placedByCell.get(cellKey(nx, ny, nz));
+    const existing = placedByCell.get(anchorKey(nx, ny, nz));
     if (!existing) return false;
     if (existing.blockType === BlockType.IntersectionCross) return true;
     if (existing.blockType !== BlockType.Straight) return false;
@@ -229,7 +308,7 @@ export function generateTrack(params = {}) {
   };
   const ensureIntersectionCrossAtCell = (px, py, pz, travelHeading) => {
     if (!allowIntersections) return false;
-    const key = cellKey(px, py, pz);
+    const key = anchorKey(px, py, pz);
     const existing = placedByCell.get(key);
     if (!existing) return false;
     if (existing.blockType === BlockType.IntersectionCross) return true;
@@ -251,8 +330,8 @@ export function generateTrack(params = {}) {
   };
 
   // ---- Place Start ----
-  placePiece(BlockType.Start, heading, null, 0);
-  ({ x, y, z } = nextPos(x, y, z, heading));
+  placePiece(BlockType.Start, heading, null, 0, flatFootprint);
+  ({ x, y, z } = nextPos(x, y, z, heading, 1));
 
   let checkpointsPlaced = 0;
   const checkpointIntervalRaw = numCheckpoints > 0 ? Math.floor(trackLength / (numCheckpoints + 1)) : Infinity;
@@ -301,37 +380,42 @@ export function generateTrack(params = {}) {
 
   // ---- Piece placement functions ----
 
-  const exitFreeOrIntersect = (ex, ey, ez, h) =>
-    isFree(ex, ey, ez) || canExitIntoIntersection(ex, ey, ez, h);
+  const exitFreeOrIntersect = (ex, ey, ez, h, allowIntersectionEntry) =>
+    isFree(ex, ey, ez) || (allowIntersectionEntry && canExitIntoIntersection(ex, ey, ez, h));
 
   const placeStraightLike = (blockType, cpOrder) => {
-    const exit = nextPos(x, y, z, heading);
-    if (!isFree(x, y, z)) return false;
-    if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, heading)) return false;
-    placePiece(blockType, heading, cpOrder ?? null, null);
+    const fp = flatFootprint;
+    const exit = nextPos(x, y, z, heading, 1);
+    if (!canFootprint(x, y, z, fp)) return false;
+    if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, heading, true)) return false;
+    placePiece(blockType, heading, cpOrder ?? null, null, fp);
     x = exit.x; y = exit.y; z = exit.z;
     return true;
   };
 
   const placeSlopeUp = (longVariant) => {
+    const tiles = longVariant ? 2 : 1;
     const nextY = y + 1;
     if (nextY > maxHeightY) return false;
-    const exit = nextPos(x, y, z, heading);
-    if (!isFree(x, y, z)) return false;
-    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading)) return false;
-    placePiece(longVariant ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading, null, null);
+    const fp = forwardFootprint(heading, tiles, 0, 1);
+    const exit = nextPos(x, y, z, heading, tiles);
+    if (!canFootprint(x, y, z, fp)) return false;
+    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
+    placePiece(longVariant ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading, null, null, fp);
     x = exit.x; y = nextY; z = exit.z;
     return true;
   };
 
   const placeSlopeDown = (longVariant) => {
+    const tiles = longVariant ? 2 : 1;
     if (y <= 0) return false;
-    const nextY = y - 1;
-    const exit = nextPos(x, nextY, z, heading);
-    if (!isFree(x, nextY, z)) return false;
-    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading)) return false;
+    const nextY = y - 1; // slope-down blocks are anchored at the lower (exit) height
+    const fp = forwardFootprint(heading, tiles, 0, 1);
+    const exit = nextPos(x, nextY, z, heading, tiles);
+    if (!canFootprint(x, nextY, z, fp)) return false;
+    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
     y = nextY;
-    placePiece(longVariant ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading, null, null);
+    placePiece(longVariant ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading, null, null, fp);
     x = exit.x; z = exit.z;
     return true;
   };
@@ -339,10 +423,11 @@ export function generateTrack(params = {}) {
   const placeSlopeSteep = () => {
     const nextY = y + 2;
     if (nextY > maxHeightY) return false;
-    const exit = nextPos(x, y, z, heading);
-    if (!isFree(x, y, z)) return false;
-    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading)) return false;
-    placePiece(BlockType.Slope, heading, null, null);
+    const fp = slopeFootprint2;
+    const exit = nextPos(x, y, z, heading, 1);
+    if (!canFootprint(x, y, z, fp)) return false;
+    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
+    placePiece(BlockType.Slope, heading, null, null, fp);
     x = exit.x; y = nextY; z = exit.z;
     return true;
   };
@@ -350,11 +435,12 @@ export function generateTrack(params = {}) {
   const placeSteepDown = () => {
     if (y < 2) return false;
     const nextY = y - 2;
-    const exit = nextPos(x, nextY, z, heading);
-    if (!isFree(x, nextY, z)) return false;
-    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading)) return false;
+    const fp = slopeFootprint2;
+    const exit = nextPos(x, nextY, z, heading, 1);
+    if (!canFootprint(x, nextY, z, fp)) return false;
+    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
     y = nextY;
-    placePiece(BlockType.Slope, (heading + 2) % 4, null, null);
+    placePiece(BlockType.Slope, (heading + 2) % 4, null, null, fp);
     x = exit.x; z = exit.z;
     return true;
   };
@@ -368,15 +454,24 @@ export function generateTrack(params = {}) {
       turnRotation = (heading + 3) % 4;
       newHeading = (heading + 1) % 4;
     }
-    const exit = nextPos(x, y, z, newHeading);
-    if (!isFree(x, y, z)) return false;
-    if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, newHeading)) return false;
+    const isLong = variant === "long";
+    const tiles = isLong ? 3 : 1;
+    const fp = isLong ? turnSquareFootprint(heading, newHeading, tiles, 0, 0) : flatFootprint;
+    const exit = isLong
+      ? {
+          x: x + HEADING_DELTA[heading].dx * tiles + HEADING_DELTA[newHeading].dx * tiles,
+          y,
+          z: z + HEADING_DELTA[heading].dz * tiles + HEADING_DELTA[newHeading].dz * tiles,
+        }
+      : nextPos(x, y, z, newHeading, 1);
+    if (!canFootprint(x, y, z, fp)) return false;
+    if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, newHeading, false)) return false;
     // Prefer exits with more free neighbors (avoid dead ends)
     if (countFreeNeighbors(exit.x, exit.y, exit.z) < 1) return false;
     const blockType = variant === "short" ? BlockType.TurnShort
                     : variant === "long"  ? BlockType.TurnLong3
                     : BlockType.TurnSharp;
-    placePiece(blockType, turnRotation, null, null);
+    placePiece(blockType, turnRotation, null, null, fp);
     heading = newHeading;
     x = exit.x; y = exit.y; z = exit.z;
     return true;
@@ -407,9 +502,9 @@ export function generateTrack(params = {}) {
 
   for (let i = 0; i < trackLength; i++) {
     // Handle occupied cell
-    if (isOccupied(x, y, z)) {
-      if (ensureIntersectionCrossAtCell(x, y, z, heading)) {
-        ({ x, y, z } = nextPos(x, y, z, heading));
+    if (!isFree(x, y, z)) {
+      if (hasAnchor(x, y, z) && ensureIntersectionCrossAtCell(x, y, z, heading)) {
+        ({ x, y, z } = nextPos(x, y, z, heading, 1));
         continue;
       }
       // Try to escape: multiple strategies
@@ -417,7 +512,7 @@ export function generateTrack(params = {}) {
       // Strategy 1: turn left or right
       for (const dir of [1, 3]) {
         const tryHeading = (heading + dir) % 4;
-        const tryExit = nextPos(x, y, z, tryHeading);
+        const tryExit = nextPos(x, y, z, tryHeading, 1);
         if (isFree(tryExit.x, tryExit.y, tryExit.z)) {
           heading = tryHeading;
           ({ x, y, z } = tryExit);
@@ -439,7 +534,7 @@ export function generateTrack(params = {}) {
       // Strategy 3: reverse
       if (!escaped) {
         const reverseH = (heading + 2) % 4;
-        const tryExit = nextPos(x, y, z, reverseH);
+        const tryExit = nextPos(x, y, z, reverseH, 1);
         if (isFree(tryExit.x, tryExit.y, tryExit.z)) {
           heading = reverseH;
           ({ x, y, z } = tryExit);
@@ -545,29 +640,31 @@ export function generateTrack(params = {}) {
   let descentAttempts = 0;
   while (y > 0 && descentAttempts < 20) {
     descentAttempts++;
-    if (y >= 2 && allowSteepSlopes && isFree(x, y - 2, z)) {
-      const exit = nextPos(x, y - 2, z, heading);
-      if (isFree(x, y - 2, z) && (isFree(exit.x, y - 2, exit.z) || descentAttempts > 15)) {
-        y -= 2;
-        placePiece(BlockType.Slope, (heading + 2) % 4, null, null);
-        const e = nextPos(x, y, z, heading);
+    if (y >= 2 && allowSteepSlopes) {
+      const anchorY = y - 2;
+      const exit = nextPos(x, anchorY, z, heading, 1);
+      if (canFootprint(x, anchorY, z, slopeFootprint2) && (isFree(exit.x, anchorY, exit.z) || descentAttempts > 15)) {
+        y = anchorY;
+        placePiece(BlockType.Slope, (heading + 2) % 4, null, null, slopeFootprint2);
+        const e = nextPos(x, y, z, heading, 1);
         x = e.x; z = e.z;
         continue;
       }
     }
-    if (y >= 1 && isFree(x, y - 1, z)) {
-      const exit = nextPos(x, y - 1, z, heading);
-      if (isFree(x, y - 1, z) && (isFree(exit.x, y - 1, exit.z) || descentAttempts > 15)) {
-        y -= 1;
-        placePiece(BlockType.SlopeDown, heading, null, null);
-        const e = nextPos(x, y, z, heading);
+    if (y >= 1) {
+      const anchorY = y - 1;
+      const exit = nextPos(x, anchorY, z, heading, 1);
+      if (canFootprint(x, anchorY, z, slopeFootprint1) && (isFree(exit.x, anchorY, exit.z) || descentAttempts > 15)) {
+        y = anchorY;
+        placePiece(BlockType.SlopeDown, heading, null, null, slopeFootprint1);
+        const e = nextPos(x, y, z, heading, 1);
         x = e.x; z = e.z;
         continue;
       }
     }
     // Try turning to find a descent path
     const tryH = (heading + (rng() < 0.5 ? 1 : 3)) % 4;
-    const tryExit = nextPos(x, y, z, tryH);
+    const tryExit = nextPos(x, y, z, tryH, 1);
     if (isFree(x, y, z) && isFree(tryExit.x, tryExit.y, tryExit.z)) {
       placeStraightLike(BlockType.Straight, null);
       heading = tryH;
@@ -578,27 +675,24 @@ export function generateTrack(params = {}) {
 
   // ---- Ensure all checkpoints are placed before finish ----
   while (checkpointsPlaced < numCheckpoints) {
-    if (!isFree(x, y, z)) break;
-    const exit = nextPos(x, y, z, heading);
-    if (!isFree(exit.x, exit.y, exit.z) && !isFree(exit.x, y, exit.z)) break;
-    placePiece(BlockType.Checkpoint, heading, checkpointsPlaced, null);
+    const ok = placeStraightLike(BlockType.Checkpoint, checkpointsPlaced);
+    if (!ok) break;
     checkpointsPlaced++;
-    x = exit.x; z = exit.z;
   }
 
   // ---- Place Finish ----
-  if (isFree(x, y, z)) {
-    placePiece(BlockType.Finish, heading, null, null);
+  if (canFootprint(x, y, z, flatFootprint)) {
+    placePiece(BlockType.Finish, heading, null, null, flatFootprint);
   } else {
     // Try adjacent cells in all directions
     let finishPlaced = false;
     const prevX = x - HEADING_DELTA[heading].dx;
     const prevZ = z - HEADING_DELTA[heading].dz;
     for (const tryH of [heading, (heading + 1) % 4, (heading + 3) % 4, (heading + 2) % 4]) {
-      const alt = nextPos(prevX, y, prevZ, tryH);
-      if (isFree(alt.x, alt.y, alt.z)) {
+      const alt = nextPos(prevX, y, prevZ, tryH, 1);
+      if (canFootprint(alt.x, alt.y, alt.z, flatFootprint)) {
         x = alt.x; y = alt.y; z = alt.z;
-        placePiece(BlockType.Finish, tryH, null, null);
+        placePiece(BlockType.Finish, tryH, null, null, flatFootprint);
         finishPlaced = true;
         break;
       }
@@ -637,17 +731,16 @@ export function generateTrack(params = {}) {
       for (const off of offsets) {
         const sx = pos.x + off.dx;
         const sz = pos.z + off.dz;
-        const key = cellKey(sx, pos.y, sz);
-        if (occupied.has(key) || rng() < 0.85) continue;
+        if (!canReserveAt(sx, sz, pos.y, pos.y) || rng() < 0.85) continue;
         const sceneryTypes = [BlockType.Block, BlockType.HalfBlock, BlockType.QuarterBlock];
         const sType = sceneryTypes[Math.floor(rng() * sceneryTypes.length)];
         const rot = Math.floor(rng() * 4);
         trackData.addPart(sx, pos.y, sz, sType, rot, RotationAxis.YPositive, ColorStyle.Default, null, null);
-        occupied.add(key);
+        reserveAt(sx, sz, pos.y, pos.y, sType);
       }
     }
   }
 
   const shareCode = encodeV3ShareCode(name, trackData);
-  return { shareCode, trackData };
+  return { shareCode, trackData, name, seed, placedSequence };
 }

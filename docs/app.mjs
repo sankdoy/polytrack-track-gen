@@ -1,4 +1,4 @@
-import { generateTrack, BlockTypeName } from "./track-web.mjs?v=2026-02-10";
+import { generateTrack, BlockTypeName } from "./track-web.mjs?v=2026-02-10.2";
 
 const $ = (id) => document.getElementById(id);
 
@@ -106,7 +106,8 @@ function renderResults(items) {
   out.style.display = "block";
 }
 
-function summarizeTrack(trackData) {
+function summarizeResult(result) {
+  const trackData = result.trackData;
   let total = 0;
   const counts = new Map();
   for (const [blockType, parts] of trackData.parts) {
@@ -118,44 +119,51 @@ function summarizeTrack(trackData) {
     .slice(0, 8)
     .map(([t, c]) => `${BlockTypeName[t] || t}:${c}`)
     .join(", ");
-  return `pieces: ${total}\nbyType(top): ${top}`;
+
+  const seq = Array.isArray(result.placedSequence) ? result.placedSequence : [];
+  const seqLines = seq
+    .slice(0, 40)
+    .map((p, i) => `${i}: ${BlockTypeName[p.blockType] || p.blockType}  (${p.x},${p.y},${p.z}) rot=${p.rotation}`)
+    .join("\n");
+
+  return `pieces: ${total}\nbyType(top): ${top}\n\nsequence(first 40):\n${seqLines || "(not available)"}`;
 }
 
-	async function generateBatch() {
-	  const btn = $("generateBtn");
-	  btn.disabled = true;
-	  setStatus("Generating…");
+async function generateBatch() {
+  const btn = $("generateBtn");
+  btn.disabled = true;
+  setStatus("Generating…");
 
-	  try {
-	    const base = readParams();
-	    const requestedBatch = Number($("batch").value) || 1;
-	    let batchMax = 50;
-	    if (base.length >= 3000) batchMax = 3;
-	    else if (base.length >= 1500) batchMax = 8;
-	    else if (base.length >= 800) batchMax = 15;
-	    const batch = Math.max(1, Math.min(batchMax, requestedBatch));
+  try {
+    const base = readParams();
+    const requestedBatch = Number($("batch").value) || 1;
+    let batchMax = 50;
+    if (base.length >= 3000) batchMax = 3;
+    else if (base.length >= 1500) batchMax = 8;
+    else if (base.length >= 800) batchMax = 15;
+    const batch = Math.max(1, Math.min(batchMax, requestedBatch));
 
-	    const results = [];
-	    for (let i = 0; i < batch; i++) {
-	      const seed = (base.seed || Date.now()) + i;
-	      const name = batch > 1 ? `${base.name} #${i + 1}` : base.name;
-	      const r = generateTrack({ ...base, name, seed });
+    const results = [];
+    for (let i = 0; i < batch; i++) {
+      const seed = (base.seed || Date.now()) + i;
+      const name = batch > 1 ? `${base.name} #${i + 1}` : base.name;
+      const r = generateTrack({ ...base, name, seed });
       results.push({
         name,
         seed,
         shareCode: r.shareCode,
-        details: summarizeTrack(r.trackData),
+        details: summarizeResult(r),
       });
     }
 
-	    renderResults(results);
-	    const suffix = batch !== requestedBatch ? ` (batch capped at ${batchMax} for performance)` : "";
-	    setStatus(`${results.length} track(s) generated${suffix}`, "good");
-	  } catch (e) {
-	    setStatus(e?.message || String(e), "bad");
-	  } finally {
-	    btn.disabled = false;
-	  }
+    renderResults(results);
+    const suffix = batch !== requestedBatch ? ` (batch capped at ${batchMax} for performance)` : "";
+    setStatus(`${results.length} track(s) generated${suffix}`, "good");
+  } catch (e) {
+    setStatus(e?.message || String(e), "bad");
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 $("generateBtn").addEventListener("click", generateBatch);
