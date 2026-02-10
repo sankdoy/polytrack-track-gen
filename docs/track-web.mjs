@@ -198,25 +198,27 @@ export function generateTrack(params = {}) {
   const anchorKey = (px, py, pz) => `${px},${py},${pz}`;
   const xzKey = (px, pz) => `${px},${pz}`;
 
-  // Track occupancy per (x,z) with vertical spans.
-  // This prevents illegal overlaps while still allowing overpasses.
-  const occupiedXZ = new Map(); // xzKey -> Array<{ yMin, yMax, blockType }>
-  const spansOverlap = (aMin, aMax, bMin, bMax) => !(aMax < bMin || aMin > bMax);
+  // Track occupancy per (x,z) by integer Y levels.
+  // Use a Set of occupied integer Y coordinates for each (x,z).
+  const occupiedXZ = new Map(); // xzKey -> Set<number>
   const collidesAt = (px, pz, yMin, yMax) => {
-    const spans = occupiedXZ.get(xzKey(px, pz));
-    if (!spans) return null;
-    for (const s of spans) {
-      if (spansOverlap(yMin, yMax, s.yMin, s.yMax)) return s;
+    const key = xzKey(px, pz);
+    const set = occupiedXZ.get(key);
+    if (!set) return false;
+    for (let yy = yMin; yy <= yMax; yy++) {
+      if (set.has(yy)) return true;
     }
-    return null;
+    return false;
   };
   const canReserveAt = (px, pz, yMin, yMax) => yMin >= 0 && !collidesAt(px, pz, yMin, yMax);
   const reserveAt = (px, pz, yMin, yMax, blockType) => {
     const key = xzKey(px, pz);
-    const spans = occupiedXZ.get(key);
-    const entry = { yMin, yMax, blockType };
-    if (spans) spans.push(entry);
-    else occupiedXZ.set(key, [entry]);
+    let set = occupiedXZ.get(key);
+    if (!set) {
+      set = new Set();
+      occupiedXZ.set(key, set);
+    }
+    for (let yy = yMin; yy <= yMax; yy++) set.add(yy);
   };
   const isFree = (px, py, pz) => canReserveAt(px, pz, py, py);
   const hasAnchor = (px, py, pz) => placedByCell.has(anchorKey(px, py, pz));
@@ -227,8 +229,29 @@ export function generateTrack(params = {}) {
     z: cz + HEADING_DELTA[h].dz * tiles,
   });
 
-  const canFootprint = (ax, ay, az, footprint) => true; // TODO: fix occupancy checks
-  const reserveFootprint = (ax, ay, az, blockType, footprint) => true;
+  const canFootprint = (ax, ay, az, footprint) => {
+    for (const c of footprint) {
+      const wx = ax + c.dx;
+      const wz = az + c.dz;
+      const yMin = ay + c.yMin;
+      const yMax = ay + c.yMax;
+      if (!canReserveAt(wx, wz, yMin, yMax)) return false;
+    }
+    return true;
+  };
+  const reserveFootprint = (ax, ay, az, blockType, footprint) => {
+    for (const c of footprint) {
+      const wx = ax + c.dx;
+      const wz = az + c.dz;
+      const yMin = ay + c.yMin;
+      const yMax = ay + c.yMax;
+      if (!canReserveAt(wx, wz, yMin, yMax)) return false;
+    }
+    for (const c of footprint) {
+      reserveAt(ax + c.dx, az + c.dz, ay + c.yMin, ay + c.yMax, blockType);
+    }
+    return true;
+  };
 
   const flatFootprint = [{ dx: 0, dz: 0, yMin: 0, yMax: 0 }];
   const slopeFootprint1 = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
