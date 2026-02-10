@@ -37,6 +37,12 @@ bindRange("maxAttemptsPerPiece");
 bindRange("intersectionChance", (v) => Number(v).toFixed(2));
 bindRange("templateChance", (v) => Number(v).toFixed(2));
 
+const updatedEl = $("updated");
+if (updatedEl) {
+  const d = new Date(document.lastModified);
+  updatedEl.textContent = Number.isFinite(d.valueOf()) ? ` Updated ${d.toLocaleDateString()}` : "";
+}
+
 $("rollSeed").addEventListener("click", () => {
   $("seed").value = String(Math.floor(Math.random() * 1_000_000));
 });
@@ -115,20 +121,25 @@ function summarizeTrack(trackData) {
   return `pieces: ${total}\nbyType(top): ${top}`;
 }
 
-async function generateBatch() {
-  const btn = $("generateBtn");
-  btn.disabled = true;
-  setStatus("Generating…");
+	async function generateBatch() {
+	  const btn = $("generateBtn");
+	  btn.disabled = true;
+	  setStatus("Generating…");
 
-  try {
-    const base = readParams();
-    const batch = Math.max(1, Math.min(50, Number($("batch").value) || 1));
+	  try {
+	    const base = readParams();
+	    const requestedBatch = Number($("batch").value) || 1;
+	    let batchMax = 50;
+	    if (base.length >= 3000) batchMax = 3;
+	    else if (base.length >= 1500) batchMax = 8;
+	    else if (base.length >= 800) batchMax = 15;
+	    const batch = Math.max(1, Math.min(batchMax, requestedBatch));
 
-    const results = [];
-    for (let i = 0; i < batch; i++) {
-      const seed = (base.seed || Date.now()) + i;
-      const name = batch > 1 ? `${base.name} #${i + 1}` : base.name;
-      const r = generateTrack({ ...base, name, seed });
+	    const results = [];
+	    for (let i = 0; i < batch; i++) {
+	      const seed = (base.seed || Date.now()) + i;
+	      const name = batch > 1 ? `${base.name} #${i + 1}` : base.name;
+	      const r = generateTrack({ ...base, name, seed });
       results.push({
         name,
         seed,
@@ -137,17 +148,17 @@ async function generateBatch() {
       });
     }
 
-    renderResults(results);
-    setStatus(`${results.length} track(s) generated`, "good");
-  } catch (e) {
-    setStatus(e?.message || String(e), "bad");
-  } finally {
-    btn.disabled = false;
-  }
+	    renderResults(results);
+	    const suffix = batch !== requestedBatch ? ` (batch capped at ${batchMax} for performance)` : "";
+	    setStatus(`${results.length} track(s) generated${suffix}`, "good");
+	  } catch (e) {
+	    setStatus(e?.message || String(e), "bad");
+	  } finally {
+	    btn.disabled = false;
+	  }
 }
 
 $("generateBtn").addEventListener("click", generateBatch);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !$("generateBtn").disabled) generateBatch();
 });
-

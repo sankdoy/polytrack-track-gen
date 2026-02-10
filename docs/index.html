@@ -51,6 +51,15 @@
         font-size: 0.8rem;
       }
 
+      header .updated {
+        display: inline-block;
+        margin-left: 10px;
+        padding-left: 10px;
+        border-left: 1px solid var(--border);
+        color: rgba(159,176,192,0.85);
+        font-size: 0.75rem;
+      }
+
       header .support {
         display: inline-flex;
         align-items: center;
@@ -283,7 +292,7 @@
     <header>
       <div>
         <h1>PolyTrack Track Generator</h1>
-        <p>Generates share codes locally in your browser.</p>
+	        <p>Generates share codes locally in your browser.<span class="updated" id="updated"></span></p>
       </div>
       <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -304,10 +313,10 @@
           <input type="text" id="name" value="Generated Track" />
         </div>
 
-        <div class="field">
-          <label>Length <span class="val" id="lengthVal">40</span></label>
-          <input type="range" id="length" min="10" max="500" value="40" step="1" />
-        </div>
+	        <div class="field">
+	          <label>Length <span class="val" id="lengthVal">30</span></label>
+	          <input type="range" id="length" min="10" max="5000" value="30" step="25" />
+	        </div>
 
         <div class="field">
           <label>Elevation (0-10) <span class="val" id="elevationVal">3</span></label>
@@ -319,10 +328,10 @@
           <input type="range" id="curviness" min="0" max="10" value="4" />
         </div>
 
-        <div class="field">
-          <label>Checkpoints <span class="val" id="checkpointsVal">3</span></label>
-          <input type="range" id="checkpoints" min="0" max="50" value="3" />
-        </div>
+	        <div class="field">
+	          <label>Checkpoints <span class="val" id="checkpointsVal">2</span></label>
+	          <input type="range" id="checkpoints" min="0" max="500" value="2" />
+	        </div>
 
         <div class="field">
           <label>Environment</label>
@@ -342,10 +351,10 @@
         <hr class="divider" />
         <h2>Advanced</h2>
 
-        <div class="field">
-          <label>Max Height <span class="val" id="maxHeightVal">12</span></label>
-          <input type="range" id="maxHeight" min="0" max="100" value="12" />
-        </div>
+	        <div class="field">
+	          <label>Max Height <span class="val" id="maxHeightVal">24</span></label>
+	          <input type="range" id="maxHeight" min="0" max="200" value="24" />
+	        </div>
 
         <div class="field">
           <label>Max Attempts / Piece <span class="val" id="maxAttemptsPerPieceVal">25</span></label>
