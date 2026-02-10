@@ -35,21 +35,62 @@
         background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
       }
 
+      header .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      @media (max-width: 520px) {
+        header .top { align-items: flex-start; flex-direction: column; }
+      }
+
       header .support {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 10px;
+        padding: 9px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.14);
         text-decoration: none;
         color: var(--text);
-        background: rgba(18,26,38,0.6);
+        background:
+          linear-gradient(135deg, rgba(79,140,255,0.28), rgba(139,92,246,0.22)),
+          rgba(18,26,38,0.55);
         font-weight: 600;
         font-size: 0.82rem;
-        margin-top: 10px;
+        position: relative;
+        overflow: hidden;
       }
+      header .support::before {
+        content: "";
+        position: absolute;
+        inset: -40% -10%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+        transform: translateX(-60%) rotate(10deg);
+        transition: transform 0.35s ease;
+        pointer-events: none;
+      }
+      header .support:hover::before { transform: translateX(60%) rotate(10deg); }
       header .support:hover { filter: brightness(1.06); }
+      header .support:active { transform: translateY(1px); }
+
+      header .support svg {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 auto;
+        opacity: 0.95;
+      }
+
+      header .support .sub {
+        display: block;
+        font-size: 0.70rem;
+        font-weight: 600;
+        color: rgba(230,237,243,0.78);
+        letter-spacing: 0.02em;
+        margin-top: 1px;
+      }
 
       header h1 {
         margin: 0;
@@ -216,9 +257,24 @@
   </head>
   <body>
     <header>
-      <h1>PolyTrack Track Generator</h1>
-      <p>Generates share codes locally in your browser (no server).</p>
-      <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
+      <div class="top">
+        <div>
+          <h1>PolyTrack Track Generator</h1>
+          <p>Generates share codes locally in your browser (no server).</p>
+        </div>
+        <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer" aria-label="Support this project on Buy Me a Coffee (opens in a new tab)">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7 9h11v3.5a4.5 4.5 0 0 1-4.5 4.5H9.5A4.5 4.5 0 0 1 5 12.5V11a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M18 10.2h1.1a2.9 2.9 0 0 1 0 5.8H17.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M8 17.2V19a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M9 6.2c0 .9-.7 1.6-1.6 1.6M12 5c0 1.1-.9 2-2 2M15.3 6.1c0 .9-.7 1.6-1.6 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span>
+            Support the project
+            <span class="sub">Buy Me a Coffee</span>
+          </span>
+        </a>
+      </div>
     </header>
 
     <main class="wrap">

@@ -158,16 +158,47 @@ const HTML = /* html */ `<!DOCTYPE html>
 	    display: inline-flex;
 	    align-items: center;
 	    gap: 8px;
-	    padding: 6px 10px;
+	    padding: 9px 12px;
 	    border-radius: 999px;
-	    border: 1px solid rgba(255, 255, 255, 0.12);
+	    border: 1px solid rgba(255, 255, 255, 0.14);
 	    color: var(--text);
 	    text-decoration: none;
-	    background: rgba(15, 22, 33, 0.65);
+	    background:
+	      linear-gradient(135deg, rgba(79,140,255,0.28), rgba(139,92,246,0.22)),
+	      rgba(15, 22, 33, 0.55);
 	    font-size: 0.8rem;
 	    font-weight: 600;
+	    position: relative;
+	    overflow: hidden;
 	  }
-	  header a.support:hover { filter: brightness(1.05); }
+	  header a.support::before {
+	    content: "";
+	    position: absolute;
+	    inset: -40% -10%;
+	    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+	    transform: translateX(-60%) rotate(10deg);
+	    transition: transform 0.35s ease;
+	    pointer-events: none;
+	  }
+	  header a.support:hover::before { transform: translateX(60%) rotate(10deg); }
+	  header a.support:hover { filter: brightness(1.06); }
+	  header a.support:active { transform: translateY(1px); }
+
+	  header a.support svg {
+	    width: 16px;
+	    height: 16px;
+	    flex: 0 0 auto;
+	    opacity: 0.95;
+	  }
+
+	  header a.support .sub {
+	    display: block;
+	    font-size: 0.70rem;
+	    font-weight: 600;
+	    color: rgba(230,237,243,0.78);
+	    letter-spacing: 0.02em;
+	    margin-top: 1px;
+	  }
 
   header h1 {
     font-size: 1.4rem;
@@ -445,12 +476,23 @@ const HTML = /* html */ `<!DOCTYPE html>
 </head>
 <body>
 
-<header>
-  <h1>PolyTrack Generator</h1>
-  <span class="badge">GUI</span>
-  <span class="spacer"></span>
-  <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
-</header>
+	<header>
+	  <h1>PolyTrack Generator</h1>
+	  <span class="badge">GUI</span>
+	  <span class="spacer"></span>
+	  <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer" aria-label="Support this project on Buy Me a Coffee (opens in a new tab)">
+	    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+	      <path d="M7 9h11v3.5a4.5 4.5 0 0 1-4.5 4.5H9.5A4.5 4.5 0 0 1 5 12.5V11a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+	      <path d="M18 10.2h1.1a2.9 2.9 0 0 1 0 5.8H17.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+	      <path d="M8 17.2V19a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+	      <path d="M9 6.2c0 .9-.7 1.6-1.6 1.6M12 5c0 1.1-.9 2-2 2M15.3 6.1c0 .9-.7 1.6-1.6 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+	    </svg>
+	    <span>
+	      Support
+	      <span class="sub">Buy Me a Coffee</span>
+	    </span>
+	  </a>
+	</header>
 
 <div class="container">
 
