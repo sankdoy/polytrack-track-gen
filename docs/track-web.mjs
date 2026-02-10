@@ -551,10 +551,11 @@ export function generateTrack(params = {}) {
 
   let piecesPlaced = 0;
   let consecutiveStraight = 0;
+  let justPlacedPiece = false; // Skip escape logic for one cycle after placement
 
   for (let i = 0; i < trackLength; i++) {
-    // Handle occupied cell
-    if (!isFree(x, y, z)) {
+    // Skip escape logic immediately after placement; next iteration will use new x,y,z
+    if (!justPlacedPiece && !isFree(x, y, z)) {
       if (hasAnchor(x, y, z) && ensureIntersectionCrossAtCell(x, y, z, heading)) {
         ({ x, y, z } = nextPos(x, y, z, heading, 1));
         continue;
@@ -614,7 +615,7 @@ export function generateTrack(params = {}) {
       if (shouldCheckpoint && attempt === 0) {
         actionQueue.length = 0;
         placed = placeStraightLike(BlockType.Checkpoint, checkpointsPlaced);
-        if (placed) { checkpointsPlaced++; piecesPlaced++; consecutiveStraight = 0; }
+        if (placed) { checkpointsPlaced++; piecesPlaced++; consecutiveStraight = 0; justPlacedPiece = true; }
         continue;
       }
 
@@ -622,7 +623,7 @@ export function generateTrack(params = {}) {
       if (shouldDescend && attempt < 3) {
         if (y >= 2 && allowSteepSlopes) placed = placeSteepDown();
         if (!placed) placed = placeSlopeDown(false);
-        if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
+        if (placed) { piecesPlaced++; consecutiveStraight = 0; justPlacedPiece = true; continue; }
       }
 
       // Try template on first attempt
@@ -677,15 +678,17 @@ export function generateTrack(params = {}) {
         placed = placeTurn90(turnRight, variant);
         // If biased direction fails, try the other
         if (!placed) placed = placeTurn90(!turnRight, variant);
-        if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
+        if (placed) { piecesPlaced++; consecutiveStraight = 0; justPlacedPiece = true; continue; }
       }
 
       // Default: straight
       placed = placeStraightLike(BlockType.Straight, null);
-      if (placed) { piecesPlaced++; consecutiveStraight++; }
+      if (placed) { piecesPlaced++; consecutiveStraight++; justPlacedPiece = true; }
     }
 
     if (!placed) break;
+    // Reset flag for next iteration; escape logic can now run if needed
+    justPlacedPiece = false;
   }
 
   // ---- Descend to ground before checkpoints/finish ----
