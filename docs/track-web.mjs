@@ -242,6 +242,25 @@ export function generateTrack(params = {}) {
     return true;
   };
   const reserveFootprint = (ax, ay, az, blockType, footprint) => {
+    // Helper: collect conflicts for debugging
+    const footprintConflicts = (ax, ay, az, footprint) => {
+      const conflicts = [];
+      for (const c of footprint) {
+        const wx = ax + c.dx;
+        const wz = az + c.dz;
+        const yMin = ay + c.yMin;
+        const yMax = ay + c.yMax;
+        const key = xzKey(wx, wz);
+        const set = occupiedXZ.get(key);
+        const bad = [];
+        if (set) {
+          for (let yy = yMin; yy <= yMax; yy++) if (set.has(yy)) bad.push(yy);
+        }
+        if (bad.length) conflicts.push({ wx, wz, yMin, yMax, bad });
+      }
+      return conflicts;
+    };
+
     // Validate all footprint cells first
     for (const c of footprint) {
       const wx = ax + c.dx;
@@ -252,7 +271,16 @@ export function generateTrack(params = {}) {
         if (footprintDebug && placedSequence.length <= footprintDebugLimit) {
           const idx = placedSequence.length - 1;
           const part = placedSequence[idx] || { x: ax, y: ay, z: az, blockType };
-          console.warn(`reserveFootprint: blocked at piece#${idx} ${BlockTypeName?.[part.blockType]||part.blockType} @ (${part.x},${part.y},${part.z}) checking cell (${wx},[${yMin}-${yMax}],${wz})`);
+          const conflicts = footprintConflicts(ax, ay, az, footprint);
+          console.warn(`reserveFootprint: blocked at piece#${idx} ${BlockTypeName?.[part.blockType]||part.blockType} @ (${part.x},${part.y},${part.z})`);
+          console.warn(`  footprint: ${JSON.stringify(footprint)}`);
+          if (conflicts.length) {
+            for (const cc of conflicts) {
+              console.warn(`  conflict cell: (${cc.wx},[${cc.yMin}-${cc.yMax}],${cc.wz}) occupied Ys: ${cc.bad.join(",")}`);
+            }
+          } else {
+            console.warn("  no existing occupied set found for these cells");
+          }
         }
         return false;
       }
