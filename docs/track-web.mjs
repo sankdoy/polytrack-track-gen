@@ -195,6 +195,8 @@ export function generateTrack(params = {}) {
 
   const placedByCell = new Map();
   const placedSequence = [];
+  const footprintDebug = params.footprintDebug || false;
+  const footprintDebugLimit = params.footprintDebugLimit || 50;
   const anchorKey = (px, py, pz) => `${px},${py},${pz}`;
   const xzKey = (px, pz) => `${px},${pz}`;
 
@@ -240,15 +242,33 @@ export function generateTrack(params = {}) {
     return true;
   };
   const reserveFootprint = (ax, ay, az, blockType, footprint) => {
+    // Validate all footprint cells first
     for (const c of footprint) {
       const wx = ax + c.dx;
       const wz = az + c.dz;
       const yMin = ay + c.yMin;
       const yMax = ay + c.yMax;
-      if (!canReserveAt(wx, wz, yMin, yMax)) return false;
+      if (!canReserveAt(wx, wz, yMin, yMax)) {
+        if (footprintDebug && placedSequence.length <= footprintDebugLimit) {
+          const idx = placedSequence.length - 1;
+          const part = placedSequence[idx] || { x: ax, y: ay, z: az, blockType };
+          console.warn(`reserveFootprint: blocked at piece#${idx} ${BlockTypeName?.[part.blockType]||part.blockType} @ (${part.x},${part.y},${part.z}) checking cell (${wx},[${yMin}-${yMax}],${wz})`);
+        }
+        return false;
+      }
     }
+    // Reserve
     for (const c of footprint) {
-      reserveAt(ax + c.dx, az + c.dz, ay + c.yMin, ay + c.yMax, blockType);
+      const wx = ax + c.dx;
+      const wz = az + c.dz;
+      const yMin = ay + c.yMin;
+      const yMax = ay + c.yMax;
+      reserveAt(wx, wz, yMin, yMax, blockType);
+      if (footprintDebug && placedSequence.length <= footprintDebugLimit) {
+        const idx = placedSequence.length - 1;
+        const part = placedSequence[idx] || { x: ax, y: ay, z: az, blockType };
+        console.debug(`reserveFootprint: reserved for piece#${idx} ${BlockTypeName?.[part.blockType]||part.blockType} cell (${wx},[${yMin}-${yMax}],${wz})`);
+      }
     }
     return true;
   };
