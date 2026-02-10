@@ -465,22 +465,22 @@ const HTML = /* html */ `<!DOCTYPE html>
 
     <div class="field">
       <label>Length <span class="val" id="lengthVal">30</span></label>
-      <input type="range" id="length" min="10" max="2000" value="30" step="10">
+      <input type="range" id="length" min="10" max="5000" value="30" step="25">
     </div>
 
     <div class="field">
-      <label>Elevation <span class="val" id="elevationVal">1</span></label>
+      <label>Elevation (0–10) <span class="val" id="elevationVal">1</span></label>
       <input type="range" id="elevation" min="0" max="10" value="1">
     </div>
 
     <div class="field">
-      <label>Curviness <span class="val" id="curvinessVal">1</span></label>
+      <label>Curviness (0–10) <span class="val" id="curvinessVal">1</span></label>
       <input type="range" id="curviness" min="0" max="10" value="1">
     </div>
 
     <div class="field">
       <label>Checkpoints <span class="val" id="checkpointsVal">2</span></label>
-      <input type="range" id="checkpoints" min="0" max="200" value="2">
+      <input type="range" id="checkpoints" min="0" max="500" value="2">
     </div>
 
     <div class="field">
@@ -498,39 +498,37 @@ const HTML = /* html */ `<!DOCTYPE html>
       <label for="scenery">Include Scenery</label>
     </div>
 
-    <details>
-      <summary>Advanced</summary>
+    <h2 style="margin-top: 18px;">Advanced</h2>
 
-      <div class="field" style="margin-top: 10px;">
-        <label>Max Height <span class="val" id="maxHeightVal">24</span></label>
-        <input type="range" id="maxHeight" min="0" max="200" value="24" step="1">
-      </div>
+    <div class="field">
+      <label>Max Height <span class="val" id="maxHeightVal">24</span></label>
+      <input type="range" id="maxHeight" min="0" max="200" value="24" step="1">
+    </div>
 
-      <div class="field">
-        <label>Max Attempts / Piece <span class="val" id="maxAttemptsPerPieceVal">25</span></label>
-        <input type="range" id="maxAttemptsPerPiece" min="1" max="200" value="25" step="1">
-      </div>
+    <div class="field">
+      <label>Max Attempts / Piece <span class="val" id="maxAttemptsPerPieceVal">25</span></label>
+      <input type="range" id="maxAttemptsPerPiece" min="1" max="200" value="25" step="1">
+    </div>
 
-      <div class="checkbox-row">
-        <input type="checkbox" id="allowSteepSlopes" checked>
-        <label for="allowSteepSlopes">Allow Steep Slopes (+2Y)</label>
-      </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="allowSteepSlopes" checked>
+      <label for="allowSteepSlopes">Allow Steep Slopes (+2Y)</label>
+    </div>
 
-      <div class="checkbox-row">
-        <input type="checkbox" id="allowIntersections">
-        <label for="allowIntersections">Allow Self-Intersections</label>
-      </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="allowIntersections">
+      <label for="allowIntersections">Allow Self-Intersections</label>
+    </div>
 
-      <div class="field">
-        <label>Intersection Chance <span class="val" id="intersectionChanceVal">0.15</span></label>
-        <input type="range" id="intersectionChance" min="0" max="1" value="0.15" step="0.01">
-      </div>
+    <div class="field">
+      <label>Intersection Chance (0–1) <span class="val" id="intersectionChanceVal">0.15</span></label>
+      <input type="range" id="intersectionChance" min="0" max="1" value="0.15" step="0.01">
+    </div>
 
-      <div class="field">
-        <label>Template Chance <span class="val" id="templateChanceVal">0.25</span></label>
-        <input type="range" id="templateChance" min="0" max="1" value="0.25" step="0.01">
-      </div>
-    </details>
+    <div class="field">
+      <label>Template Chance (0–1) <span class="val" id="templateChanceVal">0.25</span></label>
+      <input type="range" id="templateChance" min="0" max="1" value="0.25" step="0.01">
+    </div>
   </div>
 
   <!-- Right: Generation -->

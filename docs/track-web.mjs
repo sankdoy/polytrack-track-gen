@@ -235,13 +235,16 @@ export function generateTrack(params = {}) {
     if (rng() >= intersectionProb) return false;
     const existing = placedByCell.get(cellKey(nx, ny, nz));
     if (!existing) return false;
+    if (existing.blockType === BlockType.IntersectionCross) return true;
     if (existing.blockType !== BlockType.Straight) return false;
     return axisForHeading(existing.rotation) !== axisForHeading(travelHeading);
   };
-  const upgradeCellToIntersectionCross = (px, py, pz, travelHeading) => {
+  const ensureIntersectionCrossAtCell = (px, py, pz, travelHeading) => {
+    if (!allowIntersections) return false;
     const key = cellKey(px, py, pz);
     const existing = placedByCell.get(key);
     if (!existing) return false;
+    if (existing.blockType === BlockType.IntersectionCross) return true;
     if (existing.blockType !== BlockType.Straight) return false;
     if (axisForHeading(existing.rotation) === axisForHeading(travelHeading)) return false;
     existing.blockType = BlockType.IntersectionCross;
@@ -253,7 +256,8 @@ export function generateTrack(params = {}) {
   ({ x, y, z } = nextPos(x, y, z, heading));
 
   let checkpointsPlaced = 0;
-  const checkpointInterval = numCheckpoints > 0 ? Math.floor(trackLength / (numCheckpoints + 1)) : Infinity;
+  const checkpointIntervalRaw = numCheckpoints > 0 ? Math.floor(trackLength / (numCheckpoints + 1)) : Infinity;
+  const checkpointInterval = Number.isFinite(checkpointIntervalRaw) && checkpointIntervalRaw >= 1 ? checkpointIntervalRaw : 1;
 
   const templates = [
     ["straight", "straight", "straight"],
@@ -330,7 +334,7 @@ export function generateTrack(params = {}) {
 
   for (let i = 0; i < trackLength; i++) {
     if (isOccupied(x, y, z)) {
-      if (upgradeCellToIntersectionCross(x, y, z, heading)) {
+      if (ensureIntersectionCrossAtCell(x, y, z, heading)) {
         ({ x, y, z } = nextPos(x, y, z, heading));
         continue;
       }
@@ -389,7 +393,7 @@ export function generateTrack(params = {}) {
   }
 
   for (let n = 0; n < 8 && isOccupied(x, y, z); n++) {
-    if (!upgradeCellToIntersectionCross(x, y, z, heading)) break;
+    if (!ensureIntersectionCrossAtCell(x, y, z, heading)) break;
     ({ x, y, z } = nextPos(x, y, z, heading));
   }
 
@@ -438,4 +442,3 @@ export function generateTrack(params = {}) {
   const shareCode = encodeV3ShareCode(name, trackData);
   return { shareCode, trackData };
 }
-

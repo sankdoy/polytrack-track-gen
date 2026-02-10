@@ -1208,6 +1208,7 @@ function generateTrack(params = {}) {
 
     const existing = placedByCell.get(cellKey(nx, ny, nz));
     if (!existing) return false;
+    if (existing.blockType === BlockType.IntersectionCross) return true;
     if (existing.blockType !== BlockType.Straight) return false;
 
     const existingAxis = axisForHeading(existing.rotation);
@@ -1215,7 +1216,8 @@ function generateTrack(params = {}) {
     return existingAxis !== incomingAxis;
   };
 
-  const upgradeCellToIntersectionCross = (px, py, pz, travelHeading) => {
+  const ensureIntersectionCrossAtCell = (px, py, pz, travelHeading) => {
+    if (!allowIntersections) return false;
     const key = cellKey(px, py, pz);
     const existing = placedByCell.get(key);
     if (!existing) return false;
@@ -1235,9 +1237,12 @@ function generateTrack(params = {}) {
 
   // ---- Determine checkpoint placement positions ----
   let checkpointsPlaced = 0;
-  const checkpointInterval = numCheckpoints > 0
+  const checkpointIntervalRaw = numCheckpoints > 0
     ? Math.floor(trackLength / (numCheckpoints + 1))
     : Infinity;
+  const checkpointInterval = Number.isFinite(checkpointIntervalRaw) && checkpointIntervalRaw >= 1
+    ? checkpointIntervalRaw
+    : 1;
 
   const templates = [
     // Common patterns from real tracks (simplified to pieces this generator can reason about)
@@ -1254,7 +1259,7 @@ function generateTrack(params = {}) {
   for (let i = 0; i < trackLength; i++) {
     // If we land on an already-placed cell, only allow it when it can become an intersection.
     if (isOccupied(x, y, z)) {
-      if (upgradeCellToIntersectionCross(x, y, z, heading)) {
+      if (ensureIntersectionCrossAtCell(x, y, z, heading)) {
         const passthrough = nextPos(x, y, z, heading);
         x = passthrough.x; y = passthrough.y; z = passthrough.z;
         continue;
@@ -1396,7 +1401,7 @@ function generateTrack(params = {}) {
   // ---- Place Finish ----
   // If we ended by crossing into an occupied straight (intersection), resolve that now.
   for (let n = 0; n < 8 && isOccupied(x, y, z); n++) {
-    if (!upgradeCellToIntersectionCross(x, y, z, heading)) break;
+    if (!ensureIntersectionCrossAtCell(x, y, z, heading)) break;
     const passthrough = nextPos(x, y, z, heading);
     x = passthrough.x; y = passthrough.y; z = passthrough.z;
   }
