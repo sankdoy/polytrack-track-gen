@@ -1,30 +1,21 @@
 # PolyTrack Track Generator
 
-Web version: https://sankdoy.github.io/polytrack-track-gen/
+Use it here: https://sankdoy.github.io/polytrack-track-gen/
 
 Random track generator that outputs PolyTrack `v3` share codes.
 
-## GitHub Pages
+## How to use
 
-This repo is set up for GitHub Pages to serve the web UI from `docs/`.
-If your Pages settings are pointing at the repo root, `index.html` redirects to `./docs/`.
+1. Open the website.
+2. Adjust the settings (length, elevation, curviness, checkpoints, environment, etc).
+3. Click **Generate**.
+4. Copy the generated `v3` share code from the results.
+5. In PolyTrack, import the share code to load the track.
 
-Notes:
-- The Pages build uses `pako` from a CDN for compression when encoding share codes.
-- This project is a baseline starting point for track creators to iterate faster.
+Tips:
+- Set a **Seed** to make results repeatable.
+- Increase **Batch Count** to roll multiple tracks quickly.
+- If a track looks broken, roll again or increase generation limits (like **Max Attempts / Piece**).
 
-## Working with large track dumps
-
-If you have a huge single-line JSON array (VS Code may show `RangeError: Invalid string length`), convert it to NDJSON (one JSON object per line):
-
-`node tools/ndjson/array-to-ndjson.mjs out_0.5.json out_0.5.ndjson`
-
-Then you can split it into smaller chunks:
-
-`split -b 100m out_0.5.ndjson out_0.5.ndjson.part.`
-
-To convert an NDJSON dump into `v3` share codes:
-
-`node tools/v3/ndjson-to-sharecodes.mjs --input out_0.5.ndjson --output sharecodes.txt`
-
-More scripts live in `tools/README.md`.
+Support:
+- Buy me a coffee: https://buymeacoffee.com/sankdoy
