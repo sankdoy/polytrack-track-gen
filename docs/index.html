@@ -35,6 +35,22 @@
         background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
       }
 
+      header .support {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.12);
+        text-decoration: none;
+        color: var(--text);
+        background: rgba(18,26,38,0.6);
+        font-weight: 600;
+        font-size: 0.82rem;
+        margin-top: 10px;
+      }
+      header .support:hover { filter: brightness(1.06); }
+
       header h1 {
         margin: 0;
         font-size: 1.05rem;
@@ -202,6 +218,7 @@
     <header>
       <h1>PolyTrack Track Generator</h1>
       <p>Generates share codes locally in your browser (no server).</p>
+      <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
     </header>
 
     <main class="wrap">

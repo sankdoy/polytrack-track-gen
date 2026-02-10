@@ -152,6 +152,23 @@ const HTML = /* html */ `<!DOCTYPE html>
 	    gap: 12px;
 	  }
 
+	  header .spacer { flex: 1; }
+
+	  header a.support {
+	    display: inline-flex;
+	    align-items: center;
+	    gap: 8px;
+	    padding: 6px 10px;
+	    border-radius: 999px;
+	    border: 1px solid rgba(255, 255, 255, 0.12);
+	    color: var(--text);
+	    text-decoration: none;
+	    background: rgba(15, 22, 33, 0.65);
+	    font-size: 0.8rem;
+	    font-weight: 600;
+	  }
+	  header a.support:hover { filter: brightness(1.05); }
+
   header h1 {
     font-size: 1.4rem;
     font-weight: 700;
@@ -431,6 +448,8 @@ const HTML = /* html */ `<!DOCTYPE html>
 <header>
   <h1>PolyTrack Generator</h1>
   <span class="badge">GUI</span>
+  <span class="spacer"></span>
+  <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
 </header>
 
 <div class="container">
