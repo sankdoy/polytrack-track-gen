@@ -452,7 +452,8 @@ export function generateTrack(params = {}) {
     const nextY = y + 1;
     if (nextY > maxHeightY) return false;
     const fp = forwardFootprint(heading, footprintTiles, 0, 1);
-    const exit = nextPos(x, y, z, heading, 1);
+    const exitTiles = footprintTiles; // advance enough to clear the footprint
+    const exit = nextPos(x, y, z, heading, exitTiles);
     if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
     placePiece(longVariant ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading, null, null, fp);
@@ -465,7 +466,8 @@ export function generateTrack(params = {}) {
     if (y <= 0) return false;
     const nextY = y - 1; // slope-down blocks are anchored at the lower (exit) height
     const fp = forwardFootprint(heading, footprintTiles, 0, 1);
-    const exit = nextPos(x, nextY, z, heading, 1);
+    const exitTiles = footprintTiles; // advance enough to clear the footprint
+    const exit = nextPos(x, nextY, z, heading, exitTiles);
     if (!canFootprint(x, nextY, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
     y = nextY;
@@ -511,7 +513,9 @@ export function generateTrack(params = {}) {
     const isLong = variant === "long";
     const footprintTiles = isLong ? 3 : 1;
     const fp = isLong ? turnSquareFootprint(heading, newHeading, footprintTiles, 0, 0) : flatFootprint;
-    const exit = nextPos(x, y, z, newHeading, 1);
+    // For 3x3 turns, advance 3 tiles in new heading; for 1x1, advance 1 tile
+    const exitTiles = isLong ? 3 : 1;
+    const exit = nextPos(x, y, z, newHeading, exitTiles);
     if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, newHeading, false)) return false;
     // Prefer exits with more free neighbors (avoid dead ends)

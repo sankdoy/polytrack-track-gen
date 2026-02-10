@@ -147,7 +147,7 @@ async function generateBatch() {
     for (let i = 0; i < batch; i++) {
       const seed = (base.seed || Date.now()) + i;
       const name = batch > 1 ? `${base.name} #${i + 1}` : base.name;
-      const r = generateTrack({ ...base, name, seed, footprintDebug: true, footprintDebugLimit: 20 });
+      const r = generateTrack({ ...base, name, seed });
       results.push({
         name,
         seed,
