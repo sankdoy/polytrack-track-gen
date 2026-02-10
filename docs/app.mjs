@@ -1,4 +1,4 @@
-import { generateTrack } from "./track-web.mjs";
+import { generateTrack, BlockTypeName } from "./track-web.mjs";
 
 const $ = (id) => document.getElementById(id);
 
@@ -77,7 +77,7 @@ function renderResults(items) {
       </div>
       <div class="code">${esc(r.shareCode)}</div>
       <div class="actions">
-        <button class="btn secondary" type="button">Copy</button>
+        <button class="btn btn-secondary" type="button">Copy</button>
       </div>
       <details>
         <summary>Show details</summary>
@@ -110,7 +110,7 @@ function summarizeTrack(trackData) {
   const top = Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
-    .map(([t, c]) => `${t}:${c}`)
+    .map(([t, c]) => `${BlockTypeName[t] || t}:${c}`)
     .join(", ");
   return `pieces: ${total}\nbyType(top): ${top}`;
 }
