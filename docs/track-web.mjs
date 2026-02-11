@@ -174,6 +174,7 @@ export const manualMiniTrackScenarios = [
 
   { id: "probe_upLong_straight_downLong", label: "Probe: SlopeUpLong → Straight → SlopeDownLong → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] },
   { id: "probe_upLong_straight_downLong_highAnchor", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (high-anchor) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "high" }, { kind: "straight" }] },
+  { id: "probe_upLong_straight_downLong_highAnchor_offset", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (high-anchor, F+1, Y-1) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "high", anchorForwardTiles: 1, anchorYOffset: -1 }, { kind: "straight" }] },
 
   // Minimal “termination-only” checks (kept for quick sanity, but not great at validating exit transforms).
   { id: "sanity_start_straight_finish", label: "Sanity: Start → Straight → Finish", steps: [{ kind: "straight" }] },
@@ -215,10 +216,12 @@ export function generateManualMiniTrack(params = {}) {
     if (y < 0) throw new Error(`Manual track went below ground y=${y}`);
   };
 
-  const add = (blockType, rotation, checkpointOrder = null, startOrder = null) => {
-    trackData.addPart(x, y, z, blockType, rotation, RotationAxis.YPositive, ColorStyle.Default, checkpointOrder, startOrder);
-    placedSequence.push({ x, y, z, blockType, rotation });
+  const addAt = (px, py, pz, blockType, rotation, checkpointOrder = null, startOrder = null) => {
+    trackData.addPart(px, py, pz, blockType, rotation, RotationAxis.YPositive, ColorStyle.Default, checkpointOrder, startOrder);
+    placedSequence.push({ x: px, y: py, z: pz, blockType, rotation });
   };
+  const add = (blockType, rotation, checkpointOrder = null, startOrder = null) =>
+    addAt(x, y, z, blockType, rotation, checkpointOrder, startOrder);
 
   const move = (h, tiles = 1) => {
     x += HEADING_DELTA[h].dx * tiles;
@@ -258,21 +261,33 @@ export function generateManualMiniTrack(params = {}) {
       // Match generator behavior: slope-down pieces are anchored at the lower (exit) height.
       const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
       const anchorAt = step.anchorAt || "low"; // "low" or "high"
-      if (anchorAt === "low") {
-        y -= dy;
-        assertGrid();
-        add(step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading);
-        move(heading, tiles);
-      } else if (anchorAt === "high") {
-        assertGrid();
-        add(step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading);
-        move(heading, tiles);
-        y -= dy;
-      } else {
+      const anchorForwardTiles = Number.isFinite(step.anchorForwardTiles) ? step.anchorForwardTiles : 0;
+      const anchorYOffset = Number.isFinite(step.anchorYOffset) ? step.anchorYOffset : 0;
+
+      if (anchorAt !== "low" && anchorAt !== "high") {
         throw new Error(`Unknown down anchorAt: ${anchorAt}`);
       }
+
+      const entranceX = before.x, entranceY = before.y, entranceZ = before.z;
+      const anchorBaseY = anchorAt === "high" ? entranceY : (entranceY - dy);
+      const anchorX = entranceX + HEADING_DELTA[before.heading].dx * anchorForwardTiles;
+      const anchorZ = entranceZ + HEADING_DELTA[before.heading].dz * anchorForwardTiles;
+      const anchorY = anchorBaseY + anchorYOffset;
+
+      addAt(anchorX, anchorY, anchorZ, step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading);
+
+      // Cursor always advances from entrance; height decreases by dy.
+      x = entranceX; y = entranceY; z = entranceZ;
+      move(heading, tiles);
+      y -= dy;
       assertGrid();
-      anchorTrace.push({ label: `${step.long ? "SlopeDownLong" : "SlopeDown"} anchor=${anchorAt}`, ...before, rotation: heading, after: { x, y, z, heading } });
+      anchorTrace.push({
+        label: `${step.long ? "SlopeDownLong" : "SlopeDown"} anchor=${anchorAt} F=${anchorForwardTiles} Y=${anchorYOffset}`,
+        ...before,
+        rotation: heading,
+        anchor: { x: anchorX, y: anchorY, z: anchorZ },
+        after: { x, y, z, heading },
+      });
       continue;
     }
 
@@ -301,21 +316,32 @@ export function generateManualMiniTrack(params = {}) {
       const entryRightTiles = Number.isFinite(step.entryRightTiles) ? step.entryRightTiles : 0;
       const rightHeading = (before.heading + 3) % 4;
 
-      if (entryForwardTiles || entryRightTiles) {
-        x += HEADING_DELTA[before.heading].dx * entryForwardTiles + HEADING_DELTA[rightHeading].dx * entryRightTiles;
-        z += HEADING_DELTA[before.heading].dz * entryForwardTiles + HEADING_DELTA[rightHeading].dz * entryRightTiles;
-        assertGrid();
+      const entranceX = before.x, entranceY = before.y, entranceZ = before.z;
+      let anchorX = entranceX, anchorY = entranceY, anchorZ = entranceZ;
+
+      // Mirror the generator’s model: TurnLong3(L) anchor is the opposite corner of its 5x5 footprint.
+      if (isLong && !turnRight) {
+        const shift = sizeTiles - 1;
+        anchorX += HEADING_DELTA[before.heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+        anchorZ += HEADING_DELTA[before.heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
       }
 
-      add(blockType, turnRotation);
+      if (entryForwardTiles || entryRightTiles) {
+        anchorX += HEADING_DELTA[before.heading].dx * entryForwardTiles + HEADING_DELTA[rightHeading].dx * entryRightTiles;
+        anchorZ += HEADING_DELTA[before.heading].dz * entryForwardTiles + HEADING_DELTA[rightHeading].dz * entryRightTiles;
+      }
+
+      addAt(anchorX, anchorY, anchorZ, blockType, turnRotation);
       heading = newHeading;
-      x += HEADING_DELTA[newHeading].dx * exitForwardTiles + HEADING_DELTA[before.heading].dx * exitLateralTiles;
-      z += HEADING_DELTA[newHeading].dz * exitForwardTiles + HEADING_DELTA[before.heading].dz * exitLateralTiles;
+      x = entranceX + HEADING_DELTA[newHeading].dx * exitForwardTiles + HEADING_DELTA[before.heading].dx * exitLateralTiles;
+      y = entranceY;
+      z = entranceZ + HEADING_DELTA[newHeading].dz * exitForwardTiles + HEADING_DELTA[before.heading].dz * exitLateralTiles;
       assertGrid();
       anchorTrace.push({
         label: `${BlockTypeName[blockType] || blockType}${turnRight ? " (R)" : " (L)"} size=${sizeTiles} entryF=${entryForwardTiles} entryR=${entryRightTiles} exit=${exitForwardTiles}+lat${exitLateralTiles}`,
         ...before,
         rotation: turnRotation,
+        anchor: { x: anchorX, y: anchorY, z: anchorZ },
         after: { x, y, z, heading },
       });
       continue;
@@ -523,24 +549,26 @@ export function generateTrack(params = {}) {
   };
 
   let lastPlacedKey = null;
-  const placePiece = (blockType, rotation, checkpointOrder, startOrder, footprint) => {
+  const placePieceAt = (px, py, pz, blockType, rotation, checkpointOrder, startOrder, footprint) => {
     const part = {
-      x, y, z, blockType, rotation,
+      x: px, y: py, z: pz, blockType, rotation,
       rotationAxis: RotationAxis.YPositive,
       color: ColorStyle.Default,
       checkpointOrder, startOrder,
     };
-    placedByCell.set(anchorKey(x, y, z), part);
+    placedByCell.set(anchorKey(px, py, pz), part);
     placedSequence.push(part);
-    lastPlacedKey = anchorKey(x, y, z);
+    lastPlacedKey = anchorKey(px, py, pz);
     if (footprintDebug && placedSequence.length <= footprintDebugLimit) {
       const idx = placedSequence.length - 1;
-      console.log(`piece#${idx}: ${BlockTypeName?.[blockType]||blockType} @ (${x},${y},${z}) rot=${rotation} footprint=${JSON.stringify(footprint || flatFootprint)}`);
+      console.log(`piece#${idx}: ${BlockTypeName?.[blockType]||blockType} @ (${px},${py},${pz}) rot=${rotation} footprint=${JSON.stringify(footprint || flatFootprint)}`);
     }
-    if (!reserveFootprint(x, y, z, blockType, footprint || flatFootprint)) {
+    if (!reserveFootprint(px, py, pz, blockType, footprint || flatFootprint)) {
       throw new Error("Internal: occupied footprint");
     }
   };
+  const placePiece = (blockType, rotation, checkpointOrder, startOrder, footprint) =>
+    placePieceAt(x, y, z, blockType, rotation, checkpointOrder, startOrder, footprint);
 
   // Intersection helpers
   const axisForHeading = (h) => (h === 0 || h === 2) ? "NS" : "EW";
@@ -717,23 +745,38 @@ export function generateTrack(params = {}) {
     const isLong = variant === "long";
 
     const footprintTiles = isLong ? 5 : isShort ? 2 : 1;
-    const fp = (isLong || isShort) ? turnSquareFootprint(heading, newHeading, footprintTiles, 0, 0) : flatFootprint;
+    // IMPORTANT: empirically, TurnLong3(L) appears to use a different anchor corner than TurnLong3(R).
+    // We model this by shifting the stored anchor to the opposite corner of the square footprint, and
+    // flipping footprint directions so collisions cover the actual occupied area.
+    const entranceX = x, entranceY = y, entranceZ = z;
+    let anchorX = entranceX, anchorZ = entranceZ;
+    let fpForwardHeading = heading;
+    let fpSideHeading = newHeading;
+    if (isLong && !turnRight) {
+      const shift = footprintTiles - 1; // 4 tiles for 5x5
+      anchorX = entranceX + HEADING_DELTA[heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+      anchorZ = entranceZ + HEADING_DELTA[heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+      fpForwardHeading = (heading + 2) % 4;
+      fpSideHeading = (newHeading + 2) % 4;
+    }
+
+    const fp = (isLong || isShort) ? turnSquareFootprint(fpForwardHeading, fpSideHeading, footprintTiles, 0, 0) : flatFootprint;
 
     const exitForwardTiles = isLong ? 5 : isShort ? 2 : 1;
     const exitLateralTiles = isLong ? 4 : isShort ? 1 : 0;
     const exit = {
-      x: x + HEADING_DELTA[newHeading].dx * exitForwardTiles + HEADING_DELTA[heading].dx * exitLateralTiles,
-      y,
-      z: z + HEADING_DELTA[newHeading].dz * exitForwardTiles + HEADING_DELTA[heading].dz * exitLateralTiles,
+      x: entranceX + HEADING_DELTA[newHeading].dx * exitForwardTiles + HEADING_DELTA[heading].dx * exitLateralTiles,
+      y: entranceY,
+      z: entranceZ + HEADING_DELTA[newHeading].dz * exitForwardTiles + HEADING_DELTA[heading].dz * exitLateralTiles,
     };
-    if (!canFootprint(x, y, z, fp)) return false;
+    if (!canFootprint(anchorX, y, anchorZ, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, newHeading, false)) return false;
     // Prefer exits with more free neighbors (avoid dead ends)
     if (countFreeNeighbors(exit.x, exit.y, exit.z) < 1) return false;
     const blockType = variant === "short" ? BlockType.TurnShort
                     : variant === "long"  ? BlockType.TurnLong3
                     : BlockType.TurnSharp;
-    placePiece(blockType, turnRotation, null, null, fp);
+    placePieceAt(anchorX, y, anchorZ, blockType, turnRotation, null, null, fp);
     heading = newHeading;
     x = exit.x; y = exit.y; z = exit.z;
     return true;
