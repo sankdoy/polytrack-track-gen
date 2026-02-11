@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.7";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.9";
 
 const $ = (id) => document.getElementById(id);
 
@@ -69,6 +69,7 @@ function readParams() {
     numCheckpoints: Number($("checkpoints").value),
     environment: $("environment").value,
     includeScenery: $("scenery").checked,
+    includePillars: $("pillars")?.checked || false,
     maxHeight: Number($("maxHeight").value),
     maxAttemptsPerPiece: Number($("maxAttemptsPerPiece").value),
     allowSteepSlopes: $("allowSteepSlopes").checked,

@@ -311,6 +311,14 @@ export function generateManualMiniTrack(params = {}) {
         anchorZ += HEADING_DELTA[before.heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
       }
 
+      // Empirical: TurnShort(L) anchor is offset from the entrance by 1 tile (back along entry + forward along exit).
+      if (isShort && !turnRight) {
+        const shift = sizeTiles - 1; // 1 tile for the 2x2 short turn
+        const backHeading = (before.heading + 2) % 4;
+        anchorX += HEADING_DELTA[backHeading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+        anchorZ += HEADING_DELTA[backHeading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+      }
+
       if (entryForwardTiles || entryRightTiles) {
         anchorX += HEADING_DELTA[before.heading].dx * entryForwardTiles + HEADING_DELTA[rightHeading].dx * entryRightTiles;
         anchorZ += HEADING_DELTA[before.heading].dz * entryForwardTiles + HEADING_DELTA[rightHeading].dz * entryRightTiles;
@@ -376,6 +384,7 @@ export function generateTrack(params = {}) {
     numCheckpoints = 2,
     environment = "Summer",
     includeScenery = false,
+    includePillars = false,
     seed = Date.now(),
     maxHeight = 24,
     maxAttemptsPerPiece = 25,
@@ -752,6 +761,13 @@ export function generateTrack(params = {}) {
       fpForwardHeading = (heading + 2) % 4;
       fpSideHeading = (newHeading + 2) % 4;
     }
+    // Empirical: TurnShort(L) anchor is offset from the entrance by 1 tile (back along entry + forward along exit).
+    if (isShort && !turnRight) {
+      const shift = footprintTiles - 1; // 1 tile for 2x2
+      const backHeading = (heading + 2) % 4;
+      anchorX = entranceX + HEADING_DELTA[backHeading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+      anchorZ = entranceZ + HEADING_DELTA[backHeading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+    }
 
     const fp = (isLong || isShort) ? turnSquareFootprint(fpForwardHeading, fpSideHeading, footprintTiles, 0, 0) : flatFootprint;
 
@@ -1020,10 +1036,57 @@ export function generateTrack(params = {}) {
     trackData.addPart(p.x, p.y, p.z, p.blockType, p.rotation, p.rotationAxis, p.color, p.checkpointOrder, p.startOrder);
   }
 
+  // ---- Pillars (supports) ----
+  // Place a pillar every Nth elevated (non-ramp) track piece.
+  // Pillars extend downward until ground (y=0) or until another track occupies the column.
+  // Never place pillars beneath ramps/slopes of any kind.
+  if (includePillars) {
+    const isRamp = (t) =>
+      t === BlockType.SlopeUp ||
+      t === BlockType.SlopeDown ||
+      t === BlockType.SlopeUpLong ||
+      t === BlockType.SlopeDownLong ||
+      t === BlockType.Slope;
+
+    const PILLAR_SPACING = 10;
+    let elevatedCount = 0;
+
+    for (const p of placedSequence) {
+      if (!p || p.y <= 0) continue;
+      if (p.blockType === BlockType.Start) continue;
+      if (isRamp(p.blockType)) continue;
+
+      elevatedCount++;
+      if ((elevatedCount % PILLAR_SPACING) !== 0) continue;
+
+      const colX = p.x;
+      const colZ = p.z;
+      const startY = p.y - 1;
+      if (startY < 0) continue;
+
+      const set = occupiedXZ.get(xzKey(colX, colZ));
+      let stopAt = -1;
+      if (set) {
+        for (let yy = startY; yy >= 0; yy--) {
+          if (set.has(yy)) { stopAt = yy; break; }
+        }
+      }
+      const minY = stopAt >= 0 ? (stopAt + 1) : 0;
+
+      for (let yy = startY; yy >= minY; yy--) {
+        if (!canReserveAt(colX, colZ, yy, yy)) break;
+        trackData.addPart(colX, yy, colZ, BlockType.Block, 0, RotationAxis.YPositive, ColorStyle.Default, null, null);
+        reserveAt(colX, colZ, yy, yy, BlockType.Block);
+      }
+    }
+  }
+
   // ---- Scenery ----
   if (includeScenery) {
     const roadPositions = [];
-    for (const parts of trackData.parts.values()) {
+    for (const [t, parts] of trackData.parts) {
+      // Only treat road-like pieces as sources for nearby scenery placement.
+      if (t === BlockType.Block || t === BlockType.HalfBlock || t === BlockType.QuarterBlock) continue;
       for (const p of parts) roadPositions.push({ x: p.x, y: p.y, z: p.z });
     }
     for (const pos of roadPositions) {
