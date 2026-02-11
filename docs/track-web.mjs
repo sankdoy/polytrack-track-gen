@@ -141,44 +141,11 @@ export function encodeV3ShareCode(name, trackData) {
 // ---- Manual mini-tracks (for debugging alignment) ----
 
 export const manualMiniTrackScenarios = [
-  // Probes: force exit math correctness by continuing with strict pieces.
-
-  { id: "probe_straight_run", label: "Probe: Straight run (Start → Straight×4 → Finish)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-
-  { id: "probe_turnShort_R_straights", label: "Probe: TurnShort (R) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnShort_L_straights", label: "Probe: TurnShort (L) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-
-  { id: "probe_turnSharp_R_straights", label: "Probe: TurnSharp (R) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnSharp_L_straights", label: "Probe: TurnSharp (L) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-
-  { id: "probe_turnLong3_R_exit5lat4_straights", label: "Probe: TurnLong3 (R, exit=5, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 5, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_R_exit4lat4_straights", label: "Probe: TurnLong3 (R, exit=4, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 4, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_R_exit6lat4_straights", label: "Probe: TurnLong3 (R, exit=6, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 6, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-
-  { id: "probe_turnLong3_L_exit5lat4_straights", label: "Probe: TurnLong3 (L, exit=5, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 5, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_L_exit4lat4_straights", label: "Probe: TurnLong3 (L, exit=4, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 4, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_L_exit6lat4_straights", label: "Probe: TurnLong3 (L, exit=6, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 6, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-
-  // Entry-anchor probes (include a normal straight BEFORE the corner to avoid Start/Finish special-casing).
-  { id: "probe_straight_then_turnLong3_R_exit5lat4", label: "Probe: Straight → TurnLong3 (R, exit=5, lat=4) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "R", variant: "long", exitTiles: 5, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_straight_then_turnLong3_L_exit5lat4", label: "Probe: Straight → TurnLong3 (L, exit=5, lat=4) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "L", variant: "long", exitTiles: 5, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-
-  // Entry-offset variants (try shifting where we *place* the TurnLong3 anchor, to see if the piece’s internal anchor differs).
-  // entryRightTiles: +1 means shift 1 tile to the RIGHT relative to travel direction before placing the piece.
-  // entryForwardTiles: +1 means shift 1 tile FORWARD relative to travel direction before placing the piece.
-  { id: "probe_straight_then_turnLong3_L_entryF1_Rm1", label: "Diagnostic: Straight → TurnLong3 (L, entry F+1 R-1) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "L", variant: "long", exitTiles: 5, lateralTiles: 4, entryForwardTiles: 1, entryRightTiles: -1 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_straight_then_turnLong3_R_entryF1_Rp1", label: "Diagnostic: Straight → TurnLong3 (R, entry F+1 R+1) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "R", variant: "long", exitTiles: 5, lateralTiles: 4, entryForwardTiles: 1, entryRightTiles: 1 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-
-  { id: "probe_turnShort_R_then_up", label: "Probe: TurnShort (R) → SlopeUp → Straight×2", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: false }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_up_then_turnShort_R", label: "Probe: SlopeUp → TurnShort (R) → Straight×2", steps: [{ kind: "up", long: false }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }] },
-
-  { id: "probe_upLong_straight_downLong", label: "Probe: SlopeUpLong → Straight → SlopeDownLong → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] },
-  { id: "probe_upLong_straight_downLong_highAnchor", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (high-anchor) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "high" }, { kind: "straight" }] },
-  { id: "probe_upLong_straight_downLong_highAnchor_offset", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (high-anchor, F+1, Y-1) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "high", anchorForwardTiles: 1, anchorYOffset: -1 }, { kind: "straight" }] },
-  { id: "probe_upLong_straight_downLong_lowAnchor_F1", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (low-anchor, F+1) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "low", anchorForwardTiles: 1 }, { kind: "straight" }] },
-
-  // Minimal “termination-only” checks (kept for quick sanity, but not great at validating exit transforms).
-  { id: "sanity_start_straight_finish", label: "Sanity: Start → Straight → Finish", steps: [{ kind: "straight" }] },
+  // Keep the dropdown small and numbered; add more only when we hit a new mismatch.
+  { id: "track1", label: "track1", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "track2", label: "track2", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "track3", label: "track3", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "track4", label: "track4", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] },
 ];
 
 function getScenario(id) {
@@ -189,7 +156,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "probe_straight_run",
+    scenarioId = "track1",
     name = "Manual Mini Track",
     environment = "Summer",
   } = params;
