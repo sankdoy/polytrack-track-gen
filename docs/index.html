@@ -3,35 +3,75 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>PolyTrack Track Generator</title>
+    <title>PolyTrack Generator</title>
     <style>
       :root {
-        --bg: #1b1b24;
-        --panel: #222230;
-        --panel-alt: #1e1e2a;
-        --text: #d0d0dc;
-        --muted: #7c7c90;
-        --border: #2c2c3c;
-        --accent: #8899cc;
-        --accent-hover: #99aadd;
-        --good: #7db88a;
-        --bad: #cc7777;
-        --input-bg: #191924;
-        --radius: 8px;
+        --base: #fafbfd;
+        --text: #2c3e50;
+        --muted: rgba(44, 62, 80, 0.68);
+
+        /* bright pastels */
+        --sky: #a8d5e2;
+        --baby: #70d6ff;
+        --mint: #b5ead7;
+        --peach: #ffd6a5;
+        --lav: #e8b4f0;
+        --lemon: #fff2cc;
+
+        --panel: rgba(255, 255, 255, 0.68);
+        --border: rgba(255, 255, 255, 0.75);
+        --hairline: rgba(44, 62, 80, 0.12);
+
+        --shadow: 0 10px 30px rgba(34, 48, 68, 0.10);
+        --radius: 18px;
+
+        --good: #2e9e77;
+        --bad: #d95454;
       }
 
       * { box-sizing: border-box; margin: 0; }
+      a { color: inherit; }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: var(--bg);
+        font-family: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background:
+          radial-gradient(1200px 800px at 20% -10%, rgba(112, 214, 255, 0.55), transparent 60%),
+          radial-gradient(900px 700px at 90% 0%, rgba(232, 180, 240, 0.35), transparent 60%),
+          radial-gradient(800px 650px at 60% 110%, rgba(181, 234, 215, 0.55), transparent 60%),
+          linear-gradient(180deg, var(--base), rgba(250, 251, 253, 0.92));
         color: var(--text);
         line-height: 1.5;
+        min-height: 100vh;
+        overflow-x: hidden;
       }
 
-      header {
-        padding: 16px 20px;
-        border-bottom: 1px solid var(--border);
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -200px;
+        pointer-events: none;
+        background:
+          linear-gradient(135deg, rgba(44, 62, 80, 0.05) 0 1px, transparent 1px 100%),
+          linear-gradient(45deg, rgba(44, 62, 80, 0.04) 0 1px, transparent 1px 100%);
+        background-size: 90px 90px, 120px 120px;
+        transform: rotate(6deg);
+        opacity: 0.35;
+        filter: blur(0.2px);
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        padding: 14px 18px;
+        background: rgba(250, 251, 253, 0.70);
+        backdrop-filter: blur(14px) saturate(1.2);
+        border-bottom: 1px solid rgba(44, 62, 80, 0.10);
+      }
+
+      .topbar-inner {
+        max-width: 1320px;
+        margin: 0 auto;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -39,62 +79,99 @@
         flex-wrap: wrap;
       }
 
-      header h1 {
-        font-size: 1rem;
-        font-weight: 600;
-        letter-spacing: 0.3px;
+      .brand {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
       }
 
-      header p {
-        margin-top: 2px;
+      .brand h1 {
+        font-size: 1.02rem;
+        letter-spacing: 0.2px;
+        font-weight: 800;
+      }
+
+      .brand .sub {
         color: var(--muted);
         font-size: 0.8rem;
+        font-weight: 650;
       }
 
-      header .updated {
-        display: inline-block;
-        margin-left: 10px;
-        padding-left: 10px;
-        border-left: 1px solid var(--border);
-        color: rgba(159,176,192,0.85);
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(44, 62, 80, 0.14);
+        background: rgba(255, 255, 255, 0.66);
+        box-shadow: 0 8px 24px rgba(34, 48, 68, 0.06);
+        color: rgba(44, 62, 80, 0.80);
         font-size: 0.75rem;
+        font-weight: 700;
       }
 
-      header .support {
+      .badge .updated {
+        color: rgba(44, 62, 80, 0.62);
+        font-weight: 600;
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .chiplink {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         padding: 8px 12px;
-        border-radius: var(--radius);
-        border: 1px solid rgba(136,153,204,0.5);
-        background: linear-gradient(135deg, rgba(136,153,204,0.22), rgba(125,184,138,0.14));
-        color: var(--text);
+        border-radius: 999px;
+        border: 1px solid rgba(44, 62, 80, 0.14);
+        background: rgba(255, 255, 255, 0.62);
+        backdrop-filter: blur(10px) saturate(1.2);
+        box-shadow: 0 10px 28px rgba(34, 48, 68, 0.08);
         text-decoration: none;
         font-size: 0.78rem;
-        font-weight: 500;
-        transition: transform 0.15s, border-color 0.15s, background 0.15s;
+        font-weight: 800;
+        transition: transform 0.15s, box-shadow 0.15s;
       }
-      header .support:hover {
-        border-color: var(--accent);
-        transform: translateY(-1px);
-        background: linear-gradient(135deg, rgba(136,153,204,0.30), rgba(125,184,138,0.18));
-      }
-      header .support svg { width: 14px; height: 14px; flex-shrink: 0; }
-      header .support .support-text { display: flex; flex-direction: column; line-height: 1.1; }
-      header .support .support-title { font-weight: 650; font-size: 0.8rem; }
-      header .support .support-sub { color: rgba(208,208,220,0.75); font-size: 0.68rem; }
 
-      .wrap {
-        max-width: 920px;
-        margin: 20px auto;
-        padding: 0 16px 40px;
+      .chiplink:hover { transform: translateY(-1px); box-shadow: 0 14px 44px rgba(34, 48, 68, 0.12); }
+      .chiplink svg { width: 14px; height: 14px; }
+
+      .support {
+        border-color: rgba(44, 62, 80, 0.10);
+        background: linear-gradient(135deg, rgba(181, 234, 215, 0.60), rgba(255, 214, 165, 0.54));
+      }
+
+      main {
+        max-width: 1320px;
+        margin: 18px auto 44px;
+        padding: 0 16px;
+      }
+
+      .layout {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
+        grid-template-columns: minmax(260px, 320px) 1fr minmax(260px, 320px);
+        grid-template-areas:
+          "left preview right"
+          "bottom bottom bottom";
+        gap: 16px;
+        align-items: start;
       }
 
-      @media (max-width: 780px) {
-        .wrap { grid-template-columns: 1fr; }
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+          grid-template-areas:
+            "preview"
+            "left"
+            "right"
+            "bottom";
+        }
       }
 
       .panel {
@@ -102,15 +179,46 @@
         border: 1px solid var(--border);
         border-radius: var(--radius);
         padding: 16px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px) saturate(1.2);
+        position: relative;
+        overflow: hidden;
       }
 
+      .panel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(300px 220px at 16% 0%, rgba(112, 214, 255, 0.18), transparent 60%),
+          radial-gradient(280px 220px at 90% 20%, rgba(232, 180, 240, 0.16), transparent 60%),
+          radial-gradient(340px 260px at 60% 120%, rgba(181, 234, 215, 0.18), transparent 60%);
+        opacity: 0.9;
+      }
+
+      .panel > * { position: relative; }
+
+      .left { grid-area: left; }
+      .right { grid-area: right; }
+      .preview { grid-area: preview; padding: 14px; }
+      .bottom { grid-area: bottom; }
+
       .panel h2 {
-        font-size: 0.72rem;
-        letter-spacing: 0.1em;
+        font-size: 0.78rem;
+        letter-spacing: 0.09em;
         text-transform: uppercase;
-        color: var(--muted);
-        margin-bottom: 14px;
-        font-weight: 600;
+        color: rgba(44, 62, 80, 0.62);
+        margin-bottom: 12px;
+        font-weight: 900;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
       }
 
       .field { margin-bottom: 12px; }
@@ -121,27 +229,31 @@
         gap: 8px;
         margin-bottom: 5px;
         color: var(--muted);
-        font-size: 0.8rem;
+        font-size: 0.82rem;
+        font-weight: 700;
       }
-      label .val { color: var(--text); font-weight: 600; }
+
+      label .val { color: rgba(44, 62, 80, 0.92); font-weight: 900; }
 
       input[type="text"],
       input[type="number"],
       select {
         width: 100%;
         padding: 8px 10px;
-        border-radius: 6px;
-        border: 1px solid var(--border);
-        background: var(--input-bg);
-        color: var(--text);
-        font-size: 0.85rem;
+        border-radius: 12px;
+        border: 1px solid rgba(44, 62, 80, 0.14);
+        background: rgba(248, 251, 255, 0.78);
+        color: rgba(44, 62, 80, 0.92);
+        font-size: 0.86rem;
         outline: none;
-        transition: border-color 0.15s;
+        transition: border-color 0.15s, box-shadow 0.15s;
       }
+
       input[type="text"]:focus,
       input[type="number"]:focus,
       select:focus {
-        border-color: var(--accent);
+        border-color: rgba(162, 217, 206, 0.95);
+        box-shadow: 0 0 0 4px rgba(181, 234, 215, 0.35), 0 14px 40px rgba(34, 48, 68, 0.10);
       }
 
       input[type="range"] {
@@ -149,32 +261,29 @@
         height: 4px;
         -webkit-appearance: none;
         appearance: none;
-        background: var(--border);
+        background: linear-gradient(90deg, rgba(112, 214, 255, 0.65), rgba(181, 234, 215, 0.65), rgba(255, 214, 165, 0.7));
         border-radius: 2px;
         outline: none;
       }
+
       input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
-        background: var(--accent);
+        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.98), rgba(255,255,255,0.55) 42%, rgba(255, 214, 165, 0.92));
         cursor: pointer;
-        border: none;
-      }
-      input[type="range"]::-moz-range-thumb {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: var(--accent);
-        cursor: pointer;
-        border: none;
+        border: 1px solid rgba(44, 62, 80, 0.10);
+        box-shadow: 0 8px 20px rgba(34, 48, 68, 0.12);
       }
 
-      .divider {
-        border: none;
-        border-top: 1px solid var(--border);
-        margin: 14px 0;
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(255, 214, 165, 0.92);
+        cursor: pointer;
+        border: 1px solid rgba(44, 62, 80, 0.10);
       }
 
       .row { display: flex; gap: 8px; align-items: center; }
@@ -184,27 +293,29 @@
         display: inline-flex;
         justify-content: center;
         align-items: center;
-        padding: 8px 14px;
-        border-radius: 6px;
-        border: 1px solid var(--border);
-        background: var(--accent);
-        color: #1b1b24;
-        font-size: 0.82rem;
-        font-weight: 600;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(44, 62, 80, 0.12);
+        background: linear-gradient(135deg, rgba(181, 234, 215, 0.92), rgba(255, 214, 165, 0.92));
+        color: rgba(44, 62, 80, 0.92);
+        font-size: 0.86rem;
+        font-weight: 900;
         cursor: pointer;
-        transition: background 0.15s;
+        transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+        box-shadow: 0 14px 40px rgba(34, 48, 68, 0.12);
       }
-      .btn:hover { background: var(--accent-hover); }
+
+      .btn:hover { transform: translateY(-1px) scale(1.01); filter: saturate(1.1); }
       .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
       .btn-secondary {
-        background: var(--panel-alt);
-        color: var(--text);
-        font-weight: 500;
+        background: rgba(255, 255, 255, 0.65);
+        color: rgba(44, 62, 80, 0.88);
+        font-weight: 850;
+        box-shadow: 0 10px 30px rgba(34, 48, 68, 0.08);
       }
-      .btn-secondary:hover {
-        background: var(--border);
-      }
+
+      .btn-small { padding: 7px 10px; font-size: 0.78rem; border-radius: 999px; }
 
       .checkbox {
         display: flex;
@@ -213,31 +324,72 @@
         margin: 8px 0 10px;
         color: var(--muted);
         font-size: 0.8rem;
+        font-weight: 750;
       }
+
       .checkbox input[type="checkbox"] {
         width: 16px;
         height: 16px;
-        accent-color: var(--accent);
+        accent-color: #a2d9ce;
         cursor: pointer;
       }
 
-      .status {
-        margin-top: 10px;
-        font-size: 0.8rem;
-        color: var(--muted);
-        min-height: 1.2em;
-      }
+      .status { margin-top: 10px; font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
       .status.bad { color: var(--bad); }
       .status.good { color: var(--good); }
 
-      .results { grid-column: 1 / -1; }
+      .previewCanvasWrap {
+        width: 100%;
+        border-radius: 16px;
+        border: 1px solid rgba(44, 62, 80, 0.10);
+        background: linear-gradient(180deg, rgba(168, 213, 226, 0.40), rgba(181, 234, 215, 0.30));
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+        overflow: hidden;
+        aspect-ratio: 16 / 10;
+      }
+
+      canvas#previewCanvas { width: 100%; height: 100%; display: block; }
+
+      .hint {
+        margin-top: 10px;
+        color: rgba(44, 62, 80, 0.56);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      details {
+        border: 1px solid rgba(44, 62, 80, 0.10);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.52);
+        box-shadow: 0 10px 30px rgba(34, 48, 68, 0.08);
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+
+      summary {
+        cursor: pointer;
+        padding: 12px 12px;
+        user-select: none;
+        font-weight: 900;
+        color: rgba(44, 62, 80, 0.80);
+        list-style: none;
+      }
+
+      summary::-webkit-details-marker { display: none; }
+
+      details[open] summary {
+        background: linear-gradient(135deg, rgba(181, 234, 215, 0.45), rgba(255, 214, 165, 0.35));
+      }
+
+      .accordionBody { padding: 12px 12px 2px; }
 
       .card {
-        background: var(--panel-alt);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.62);
+        border: 1px solid rgba(44, 62, 80, 0.10);
+        border-radius: 16px;
         padding: 14px;
         margin-bottom: 10px;
+        box-shadow: 0 12px 34px rgba(34, 48, 68, 0.10);
       }
 
       .card-head {
@@ -247,187 +399,214 @@
         gap: 10px;
         margin-bottom: 8px;
       }
-      .card-title { font-weight: 600; font-size: 0.9rem; }
-      .card-meta { color: var(--muted); font-size: 0.75rem; }
+
+      .card-title { font-weight: 900; font-size: 0.95rem; }
+      .card-meta { color: var(--muted); font-size: 0.78rem; font-weight: 750; }
 
       .code {
         font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
-        background: var(--input-bg);
-        border: 1px solid var(--border);
-        border-radius: 6px;
+        background: rgba(248, 251, 255, 0.78);
+        border: 1px solid rgba(44, 62, 80, 0.12);
+        border-radius: 14px;
         padding: 10px;
         word-break: break-all;
         font-size: 0.78rem;
-        color: var(--good);
+        color: rgba(44, 62, 80, 0.86);
         max-height: 100px;
         overflow: auto;
         line-height: 1.4;
       }
 
-      .actions { display: flex; gap: 8px; margin-top: 8px; }
-      .actions .btn { padding: 6px 12px; font-size: 0.78rem; }
-
-      details {
-        border-top: 1px solid var(--border);
-        padding-top: 8px;
-        margin-top: 8px;
-      }
-      summary {
-        cursor: pointer;
-        color: var(--muted);
-        font-size: 0.78rem;
-        user-select: none;
-      }
-      summary:hover { color: var(--text); }
+      .actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .actions .btn { padding: 7px 12px; font-size: 0.78rem; }
 
       .desc {
         margin-top: 8px;
-        color: var(--muted);
+        color: rgba(44, 62, 80, 0.70);
         white-space: pre-wrap;
         font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
         font-size: 0.72rem;
         line-height: 1.4;
-        border-left: 2px solid var(--border);
+        border-left: 2px solid rgba(44, 62, 80, 0.12);
         padding-left: 10px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .btn, .chiplink, input[type="text"], input[type="number"], select { transition: none !important; }
       }
     </style>
   </head>
   <body>
-    <header>
-      <div>
-        <h1>PolyTrack Track Generator</h1>
-        <p>Generates PolyTrack1 share codes locally in your browser.<span class="updated" id="updated"></span><span class="updated"> build 2026-02-11.19</span></p>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <h1>PolyTrack Generator</h1>
+          <span class="sub">dreamy meadow edition</span>
+          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.20</span>
+        </div>
+        <div class="top-actions">
+          <a class="chiplink" href="https://polytrack.fun" target="_blank" rel="noopener noreferrer" title="Open polytrack.fun">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M10 14a4 4 0 0 1 0-6l1-1a4 4 0 0 1 6 6l-1 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M14 10a4 4 0 0 1 0 6l-1 1a4 4 0 0 1-6-6l1-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            Share on polytrack.fun
+          </a>
+          <a class="chiplink support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 9h11v3.5a4.5 4.5 0 0 1-4.5 4.5H9.5A4.5 4.5 0 0 1 5 12.5V11a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M18 10.2h1.1a2.9 2.9 0 0 1 0 5.8H17.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M8 17.2V19a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            Buy me a coffee
+          </a>
+        </div>
       </div>
-      <a class="support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M7 9h11v3.5a4.5 4.5 0 0 1-4.5 4.5H9.5A4.5 4.5 0 0 1 5 12.5V11a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-          <path d="M18 10.2h1.1a2.9 2.9 0 0 1 0 5.8H17.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          <path d="M8 17.2V19a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-        <span class="support-text">
-          <span class="support-title">Buy me a coffee</span>
-          <span class="support-sub">Support new features</span>
-        </span>
-      </a>
     </header>
 
-    <main class="wrap">
-      <section class="panel">
-        <h2>Track</h2>
+    <main>
+      <div class="layout">
+        <section class="panel left" aria-label="Essentials">
+          <h2>Essentials</h2>
 
-        <div class="field">
-          <label>Track Name</label>
-          <input type="text" id="name" value="Generated Track" />
-        </div>
-
-        <div class="field">
-          <label>Manual Scenario</label>
-          <select id="manualScenario">
-            <option value="" selected>Random generator</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Length <span class="val" id="lengthVal">500</span></label>
-          <input type="range" id="length" min="10" max="750" value="500" step="1" />
-        </div>
-
-        <div class="field">
-          <label>Elevation (0-10) <span class="val" id="elevationVal">3</span></label>
-          <input type="range" id="elevation" min="0" max="10" value="3" />
-        </div>
-
-        <div class="field">
-          <label>Curviness (0-10) <span class="val" id="curvinessVal">4</span></label>
-          <input type="range" id="curviness" min="0" max="10" value="4" />
-        </div>
-
-        <div class="field">
-          <label>Checkpoints <span class="val" id="checkpointsVal">6</span></label>
-          <input type="range" id="checkpoints" min="0" max="500" value="6" step="1" />
-        </div>
-
-        <div class="field">
-          <label>Environment</label>
-          <select id="environment">
-            <option value="Summer" selected>Summer</option>
-            <option value="Winter">Winter</option>
-            <option value="Desert">Desert</option>
-            <option value="Default">Default</option>
-          </select>
-        </div>
-
-	        <div class="checkbox">
-	          <input type="checkbox" id="scenery" />
-	          <span>Include scenery</span>
-	        </div>
-
-	        <div class="checkbox">
-	          <input type="checkbox" id="pillars" />
-	          <span>Pillars (supports)</span>
-	        </div>
-
-        <hr class="divider" />
-        <h2>Generation</h2>
-
-	        <div class="field">
-	          <label>Max Height <span class="val" id="maxHeightVal">24</span></label>
-	          <input type="range" id="maxHeight" min="0" max="200" value="24" />
-	        </div>
-
-        <div class="field">
-          <label>Max Attempts / Piece <span class="val" id="maxAttemptsPerPieceVal">25</span></label>
-          <input type="range" id="maxAttemptsPerPiece" min="1" max="200" value="25" />
-        </div>
-
-        <div class="checkbox">
-          <input type="checkbox" id="allowSteepSlopes" checked />
-          <span>Allow steep slopes (+2Y)</span>
-        </div>
-
-        <div class="checkbox">
-          <input type="checkbox" id="allowIntersections" />
-          <span>Allow self-intersections</span>
-        </div>
-
-        <div class="field">
-          <label>Intersection Chance <span class="val" id="intersectionChanceVal">0.15</span></label>
-          <input type="range" id="intersectionChance" min="0" max="1" value="0.15" step="0.01" />
-        </div>
-
-        <div class="field">
-          <label>Template Chance <span class="val" id="templateChanceVal">0.35</span></label>
-          <input type="range" id="templateChance" min="0" max="1" value="0.35" step="0.01" />
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Generate</h2>
-
-        <div class="field">
-          <label>Seed</label>
-          <div class="row">
-            <input type="number" id="seed" placeholder="Random" />
-            <button class="btn btn-secondary" id="rollSeed" type="button">Roll</button>
+          <div class="field">
+            <label>Track Name</label>
+            <input type="text" id="name" value="Generated Track" />
           </div>
-        </div>
 
-        <div class="field">
-          <label>Batch Count</label>
-          <input type="number" id="batch" value="1" min="1" max="50" />
-        </div>
+          <div class="field">
+            <label>Manual Scenario</label>
+            <select id="manualScenario">
+              <option value="" selected>Random generator</option>
+            </select>
+          </div>
 
-        <button class="btn" id="generateBtn" type="button">Generate</button>
-        <div class="status" id="status"></div>
-      </section>
+          <div class="field">
+            <label>Seed</label>
+            <div class="row">
+              <input type="number" id="seed" placeholder="Random" />
+              <button class="btn btn-secondary" id="rollSeed" type="button">Roll</button>
+            </div>
+          </div>
 
-      <section class="panel results" id="output" style="display:none;">
-        <h2>Results</h2>
-        <div id="results"></div>
-      </section>
+          <div class="field">
+            <label>Batch Count</label>
+            <input type="number" id="batch" value="1" min="1" max="50" />
+          </div>
+
+          <button class="btn" id="generateBtn" type="button">Generate</button>
+          <div class="status" id="status"></div>
+        </section>
+
+        <section class="panel preview" aria-label="Live preview">
+          <div class="panel-head">
+            <h2>Live 3D Preview</h2>
+            <div class="row" style="flex:0; gap:8px;">
+              <button class="btn btn-secondary btn-small" id="previewReset" type="button">Reset</button>
+              <button class="btn btn-secondary btn-small" id="previewAuto" type="button">Auto</button>
+            </div>
+          </div>
+          <div class="previewCanvasWrap">
+            <canvas id="previewCanvas" width="960" height="600"></canvas>
+          </div>
+          <div class="hint">Drag to orbit • Scroll to zoom • Click a result → Preview</div>
+        </section>
+
+        <section class="panel right" aria-label="Parameters">
+          <h2>Parameters</h2>
+
+          <details open>
+            <summary>Basics</summary>
+            <div class="accordionBody">
+              <div class="field">
+                <label>Length <span class="val" id="lengthVal">500</span></label>
+                <input type="range" id="length" min="10" max="750" value="500" step="1" />
+              </div>
+
+              <div class="field">
+                <label>Elevation (0-10) <span class="val" id="elevationVal">3</span></label>
+                <input type="range" id="elevation" min="0" max="10" value="3" />
+              </div>
+
+              <div class="field">
+                <label>Curviness (0-10) <span class="val" id="curvinessVal">4</span></label>
+                <input type="range" id="curviness" min="0" max="10" value="4" />
+              </div>
+
+              <div class="field">
+                <label>Checkpoints <span class="val" id="checkpointsVal">6</span></label>
+                <input type="range" id="checkpoints" min="0" max="500" value="6" step="1" />
+              </div>
+
+              <div class="field">
+                <label>Environment</label>
+                <select id="environment">
+                  <option value="Summer" selected>Summer</option>
+                  <option value="Winter">Winter</option>
+                  <option value="Desert">Desert</option>
+                  <option value="Default">Default</option>
+                </select>
+              </div>
+
+              <div class="checkbox">
+                <input type="checkbox" id="scenery" />
+                <span>Include scenery</span>
+              </div>
+
+              <div class="checkbox">
+                <input type="checkbox" id="pillars" />
+                <span>Pillars (supports)</span>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Advanced</summary>
+            <div class="accordionBody">
+              <div class="field">
+                <label>Max Height <span class="val" id="maxHeightVal">24</span></label>
+                <input type="range" id="maxHeight" min="0" max="200" value="24" />
+              </div>
+
+              <div class="field">
+                <label>Max Attempts / Piece <span class="val" id="maxAttemptsPerPieceVal">25</span></label>
+                <input type="range" id="maxAttemptsPerPiece" min="1" max="200" value="25" />
+              </div>
+
+              <div class="checkbox">
+                <input type="checkbox" id="allowSteepSlopes" checked />
+                <span>Allow steep slopes (+2Y)</span>
+              </div>
+
+              <div class="checkbox">
+                <input type="checkbox" id="allowIntersections" />
+                <span>Allow self-intersections</span>
+              </div>
+
+              <div class="field">
+                <label>Intersection Chance <span class="val" id="intersectionChanceVal">0.15</span></label>
+                <input type="range" id="intersectionChance" min="0" max="1" value="0.15" step="0.01" />
+              </div>
+
+              <div class="field">
+                <label>Template Chance <span class="val" id="templateChanceVal">0.35</span></label>
+                <input type="range" id="templateChance" min="0" max="1" value="0.35" step="0.01" />
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="panel bottom" id="output" style="display:none;" aria-label="Results">
+          <div class="panel-head">
+            <h2>Share Codes</h2>
+            <div class="badge">PolyTrack1</div>
+          </div>
+          <div id="results"></div>
+        </section>
+      </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-11.19"></script>
+    <script type="module" src="./app.mjs?v=2026-02-11.20"></script>
   </body>
 </html>
