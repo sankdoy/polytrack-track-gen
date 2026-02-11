@@ -277,6 +277,7 @@ export const manualMiniTrackScenarios = [
   { id: "ramp2", label: "ramp2 (upLong → flat → downLong)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 6 pieces
   { id: "ramp3", label: "ramp3 (steepUp → flat → steepDown)", steps: [{ kind: "steepUp" }, { kind: "straight" }, { kind: "steepDown" }, { kind: "straight" }] }, // 6 pieces
   { id: "ramp4", label: "ramp4 (east-facing ramps)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 8 pieces
+  { id: "ramp5", label: "ramp5 (south-facing ramps)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "up" }, { kind: "straight" }, { kind: "down" }, { kind: "straight" }] }, // 9 pieces
 ];
 
 function getScenario(id) {
@@ -375,7 +376,7 @@ export function generateManualMiniTrack(params = {}) {
       const anchorZ = entranceZ + HEADING_DELTA[before.heading].dz * anchorForwardTiles;
       const anchorY = anchorBaseY + anchorYOffset;
 
-      const storedRotation = (before.heading + 2) % 4;
+      const storedRotation = before.heading;
       addAt(anchorX, anchorY, anchorZ, step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, storedRotation);
 
       // Cursor always advances from entrance; height decreases by dy.
@@ -405,7 +406,7 @@ export function generateManualMiniTrack(params = {}) {
 
     if (step.kind === "steepDown") {
       const dy = Number.isFinite(step.dy) ? step.dy : 2;
-      const storedRotation = (before.heading + 2) % 4;
+      const storedRotation = before.heading;
       // Anchor at the higher (entrance) height.
       add(BlockType.Slope, storedRotation);
       move(heading, 1);
@@ -830,7 +831,7 @@ export function generateTrack(params = {}) {
     if (y < dy) return false;
     const nextY = y - dy;
     const anchorX = x, anchorY = y, anchorZ = z; // slope-down blocks are anchored at the higher (entrance) height
-    const storedRotation = (heading + 2) % 4; // store "uphill" direction
+    const storedRotation = heading; // store "downhill" travel direction
     // Over-approx vertical span for collision: occupies [-dy..0] across its forward footprint.
     const fp = longVariant
       ? forwardFootprint(heading, 2, -dy, 0)
@@ -862,7 +863,7 @@ export function generateTrack(params = {}) {
     const exit = nextPos(x, nextY, z, heading, 1);
     if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    placePieceAt(x, y, z, BlockType.Slope, (heading + 2) % 4, null, null, fp);
+    placePieceAt(x, y, z, BlockType.Slope, heading, null, null, fp);
     x = exit.x; y = nextY; z = exit.z;
     return true;
   };
