@@ -151,13 +151,13 @@ export const manualMiniTrackScenarios = [
   { id: "probe_turnSharp_R_straights", label: "Probe: TurnSharp (R) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
   { id: "probe_turnSharp_L_straights", label: "Probe: TurnSharp (L) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "probe_turnLong3_R_exit3_straights", label: "Probe: TurnLong3 (R, exit=3) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 3 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_R_exit2_straights", label: "Probe: TurnLong3 (R, exit=2) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 2 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_R_exit4_straights", label: "Probe: TurnLong3 (R, exit=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_R_exit5lat4_straights", label: "Probe: TurnLong3 (R, exit=5, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 5, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_R_exit4lat4_straights", label: "Probe: TurnLong3 (R, exit=4, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 4, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_R_exit6lat4_straights", label: "Probe: TurnLong3 (R, exit=6, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "R", variant: "long", exitTiles: 6, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
-  { id: "probe_turnLong3_L_exit3_straights", label: "Probe: TurnLong3 (L, exit=3) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 3 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_L_exit2_straights", label: "Probe: TurnLong3 (L, exit=2) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 2 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_turnLong3_L_exit4_straights", label: "Probe: TurnLong3 (L, exit=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_L_exit5lat4_straights", label: "Probe: TurnLong3 (L, exit=5, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 5, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_L_exit4lat4_straights", label: "Probe: TurnLong3 (L, exit=4, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 4, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_turnLong3_L_exit6lat4_straights", label: "Probe: TurnLong3 (L, exit=6, lat=4) → Straight×4", steps: [{ kind: "turn", dir: "L", variant: "long", exitTiles: 6, lateralTiles: 4 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
   { id: "probe_turnShort_R_then_up", label: "Probe: TurnShort (R) → SlopeUp → Straight×2", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: false }, { kind: "straight" }, { kind: "straight" }] },
   { id: "probe_up_then_turnShort_R", label: "Probe: SlopeUp → TurnShort (R) → Straight×2", steps: [{ kind: "up", long: false }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }] },
@@ -263,18 +263,24 @@ export function generateManualMiniTrack(params = {}) {
         turnRotation = (heading + 3) % 4;
         newHeading = (heading + 1) % 4;
       }
+      const isShort = step.variant === "short";
       const isLong = step.variant === "long";
-      const exitTiles = Number.isFinite(step.exitTiles) ? step.exitTiles : (isLong ? 3 : 1);
+
+      const sizeTiles = Number.isFinite(step.sizeTiles) ? step.sizeTiles : (isLong ? 5 : isShort ? 2 : 1);
+      const exitForwardTiles = Number.isFinite(step.exitTiles) ? step.exitTiles : (isLong ? 5 : isShort ? 2 : 1);
+      const exitLateralTiles = Number.isFinite(step.lateralTiles) ? step.lateralTiles : (isLong ? 4 : isShort ? 1 : 0);
+
       const blockType = step.variant === "short" ? BlockType.TurnShort
                       : step.variant === "long"  ? BlockType.TurnLong3
                       : BlockType.TurnSharp;
 
       add(blockType, turnRotation);
       heading = newHeading;
-      move(heading, exitTiles);
+      x += HEADING_DELTA[newHeading].dx * exitForwardTiles + HEADING_DELTA[before.heading].dx * exitLateralTiles;
+      z += HEADING_DELTA[newHeading].dz * exitForwardTiles + HEADING_DELTA[before.heading].dz * exitLateralTiles;
       assertGrid();
       anchorTrace.push({
-        label: `${BlockTypeName[blockType] || blockType}${turnRight ? " (R)" : " (L)"} exit=${exitTiles}`,
+        label: `${BlockTypeName[blockType] || blockType}${turnRight ? " (R)" : " (L)"} size=${sizeTiles} exit=${exitForwardTiles}+lat${exitLateralTiles}`,
         ...before,
         rotation: turnRotation,
         after: { x, y, z, heading },
@@ -665,12 +671,24 @@ export function generateTrack(params = {}) {
       turnRotation = (heading + 3) % 4;
       newHeading = (heading + 1) % 4;
     }
+    // Turn geometry notes (empirically calibrated via in-game probes):
+    // - TurnSharp: 1x1 footprint, exit is 1 tile in new heading.
+    // - TurnShort: 2x2 footprint, exit is (2 tiles in new heading) + (1 tile in old heading).
+    // - TurnLong3: 5x5 footprint, exit is (5 tiles in new heading) + (4 tiles in old heading).
+    const isShort = variant === "short";
+    const isSharp = variant === "sharp";
     const isLong = variant === "long";
-    const footprintTiles = isLong ? 3 : 1;
-    const fp = isLong ? turnSquareFootprint(heading, newHeading, footprintTiles, 0, 0) : flatFootprint;
-    // For 3x3 turns, advance 3 tiles in new heading; for 1x1, advance 1 tile
-    const exitTiles = isLong ? 3 : 1;
-    const exit = nextPos(x, y, z, newHeading, exitTiles);
+
+    const footprintTiles = isLong ? 5 : isShort ? 2 : 1;
+    const fp = (isLong || isShort) ? turnSquareFootprint(heading, newHeading, footprintTiles, 0, 0) : flatFootprint;
+
+    const exitForwardTiles = isLong ? 5 : isShort ? 2 : 1;
+    const exitLateralTiles = isLong ? 4 : isShort ? 1 : 0;
+    const exit = {
+      x: x + HEADING_DELTA[newHeading].dx * exitForwardTiles + HEADING_DELTA[heading].dx * exitLateralTiles,
+      y,
+      z: z + HEADING_DELTA[newHeading].dz * exitForwardTiles + HEADING_DELTA[heading].dz * exitLateralTiles,
+    };
     if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, newHeading, false)) return false;
     // Prefer exits with more free neighbors (avoid dead ends)
