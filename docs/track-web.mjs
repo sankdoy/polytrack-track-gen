@@ -276,11 +276,11 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 export const manualMiniTrackScenarios = [
   // Ramp calibration probes (we're focusing on slope anchoring + rotation).
   // Note: total pieces = (steps.length + Start + Finish). Aim for 6–10 total.
-  { id: "ramp1", label: "ramp1 (up → flat → down)", steps: [{ kind: "up" }, { kind: "straight" }, { kind: "down" }, { kind: "straight" }] }, // 6 pieces
-  { id: "ramp2", label: "ramp2 (upLong → flat → downLong)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 6 pieces
-  { id: "ramp3", label: "ramp3 (steepUp → flat → steepDown)", steps: [{ kind: "steepUp" }, { kind: "straight" }, { kind: "steepDown" }, { kind: "straight" }] }, // 6 pieces
-  { id: "ramp4", label: "ramp4 (east-facing ramps)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 8 pieces
-  { id: "ramp5", label: "ramp5 (south-facing ramps)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "up" }, { kind: "straight" }, { kind: "down" }, { kind: "straight" }] }, // 9 pieces
+  { id: "ramp1", label: "ramp1 (up → flat×2 → down)", steps: [{ kind: "up" }, { kind: "straight" }, { kind: "straight" }, { kind: "down" }, { kind: "straight" }] }, // 7 pieces
+  { id: "ramp2", label: "ramp2 (upLong → flat×2 → downLong)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 7 pieces
+  { id: "ramp3", label: "ramp3 (steepUp → flat×2 → steepDown)", steps: [{ kind: "steepUp" }, { kind: "straight" }, { kind: "straight" }, { kind: "steepDown" }, { kind: "straight" }] }, // 7 pieces
+  { id: "mix1", label: "mix1 (upLong → up → down → downLong)", steps: [{ kind: "up", long: true }, { kind: "up" }, { kind: "straight" }, { kind: "down" }, { kind: "down", long: true }, { kind: "straight" }] }, // 8 pieces
+  { id: "mix2", label: "mix2 (turn → ramps → turn)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }] }, // 8 pieces
 ];
 
 function getScenario(id) {
@@ -351,7 +351,8 @@ export function generateManualMiniTrack(params = {}) {
 
     if (step.kind === "up") {
       const tiles = step.long ? 2 : 1;
-      const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
+      // Empirical: Long slopes span 2 tiles but only change height by 1.
+      const dy = Number.isFinite(step.dy) ? step.dy : 1;
       add(step.long ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading);
       move(heading, tiles);
       y += dy;
@@ -362,33 +363,24 @@ export function generateManualMiniTrack(params = {}) {
 
     if (step.kind === "down") {
       const tiles = step.long ? 2 : 1;
-      const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
-      // Match generator behavior: slope-down pieces are anchored at the higher (entrance) height,
-      // and store their rotation as the "uphill" direction (heading+2).
-      const anchorAt = step.anchorAt || "high"; // "high" or "low" (override for experiments)
-      const anchorForwardTiles = Number.isFinite(step.anchorForwardTiles) ? step.anchorForwardTiles : 0;
-      const anchorYOffset = Number.isFinite(step.anchorYOffset) ? step.anchorYOffset : 0;
-
-      if (anchorAt !== "low" && anchorAt !== "high") {
-        throw new Error(`Unknown down anchorAt: ${anchorAt}`);
-      }
+      // Empirical: Long slopes span 2 tiles but only change height by 1.
+      const dy = Number.isFinite(step.dy) ? step.dy : 1;
 
       const entranceX = before.x, entranceY = before.y, entranceZ = before.z;
-      const anchorBaseY = anchorAt === "high" ? entranceY : (entranceY - dy);
-      const anchorX = entranceX + HEADING_DELTA[before.heading].dx * anchorForwardTiles;
-      const anchorZ = entranceZ + HEADING_DELTA[before.heading].dz * anchorForwardTiles;
-      const anchorY = anchorBaseY + anchorYOffset;
+      const anchorX = entranceX;
+      const anchorY = entranceY - dy; // slope-down pieces store at the lower (exit) height
+      const anchorZ = entranceZ;
+      const storedRotation = before.heading; // store travel direction
 
-      const storedRotation = before.heading;
       addAt(anchorX, anchorY, anchorZ, step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, storedRotation);
 
-      // Cursor always advances from entrance; height decreases by dy.
+      // Cursor advances from the entrance; height decreases by dy.
       x = entranceX; y = entranceY; z = entranceZ;
       move(heading, tiles);
       y -= dy;
       assertGrid();
       anchorTrace.push({
-        label: `${step.long ? "SlopeDownLong" : "SlopeDown"} anchor=${anchorAt} F=${anchorForwardTiles} Y=${anchorYOffset}`,
+        label: `${step.long ? "SlopeDownLong" : "SlopeDown"} storedAtLowerY`,
         ...before,
         rotation: storedRotation,
         anchor: { x: anchorX, y: anchorY, z: anchorZ },
@@ -409,13 +401,12 @@ export function generateManualMiniTrack(params = {}) {
 
     if (step.kind === "steepDown") {
       const dy = Number.isFinite(step.dy) ? step.dy : 2;
-      const storedRotation = before.heading;
-      // Anchor at the higher (entrance) height.
-      add(BlockType.Slope, storedRotation);
+      // Slope-down variants store at the lower (exit) height.
+      addAt(before.x, before.y - dy, before.z, BlockType.Slope, before.heading);
       move(heading, 1);
       y -= dy;
       assertGrid();
-      anchorTrace.push({ label: "Slope(steep down)", ...before, rotation: storedRotation, after: { x, y, z, heading } });
+      anchorTrace.push({ label: "Slope(steep down)", ...before, rotation: before.heading, after: { x, y, z, heading } });
       continue;
     }
 
@@ -814,7 +805,8 @@ export function generateTrack(params = {}) {
 
   const placeSlopeUp = (longVariant) => {
     const footprintTiles = longVariant ? 2 : 1;
-    const dy = longVariant ? 2 : 1;
+    // Empirical: Long slopes span 2 tiles but only change height by 1.
+    const dy = 1;
     const nextY = y + dy;
     if (nextY > maxHeightY) return false;
     // Over-approx vertical span for collision: occupies [0..dy] across its footprint.
@@ -830,15 +822,16 @@ export function generateTrack(params = {}) {
 
   const placeSlopeDown = (longVariant) => {
     const footprintTiles = longVariant ? 2 : 1;
-    const dy = longVariant ? 2 : 1;
+    // Empirical: Long slopes span 2 tiles but only change height by 1.
+    const dy = 1;
     if (y < dy) return false;
     const nextY = y - dy;
-    const anchorX = x, anchorY = y, anchorZ = z; // slope-down blocks are anchored at the higher (entrance) height
-    const storedRotation = heading; // store "downhill" travel direction
-    // Over-approx vertical span for collision: occupies [-dy..0] across its forward footprint.
-    const fp = longVariant
-      ? forwardFootprint(heading, 2, -dy, 0)
-      : forwardFootprint(heading, 1, -dy, 0);
+    // Empirical: slope-down blocks store their Y at the lower (exit) height.
+    // (x,z) still reference the entrance cell; reserve vertical span [0..dy] from the stored Y.
+    const anchorX = x, anchorY = nextY, anchorZ = z;
+    const storedRotation = heading; // store travel direction
+    // Over-approx vertical span for collision: occupies [0..dy] across its forward footprint.
+    const fp = forwardFootprint(heading, footprintTiles, 0, dy);
     const exit = nextPos(x, nextY, z, heading, footprintTiles);
     if (!canFootprint(anchorX, anchorY, anchorZ, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
@@ -862,11 +855,12 @@ export function generateTrack(params = {}) {
   const placeSteepDown = () => {
     if (y < 2) return false;
     const nextY = y - 2;
-    const fp = slopeFootprint2Down;
+    // Empirical: steep down stores at the lower (exit) height.
+    const fp = slopeFootprint2;
     const exit = nextPos(x, nextY, z, heading, 1);
-    if (!canFootprint(x, y, z, fp)) return false;
+    if (!canFootprint(x, nextY, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    placePieceAt(x, y, z, BlockType.Slope, heading, null, null, fp);
+    placePieceAt(x, nextY, z, BlockType.Slope, heading, null, null, fp);
     x = exit.x; y = nextY; z = exit.z;
     return true;
   };
@@ -1103,8 +1097,8 @@ export function generateTrack(params = {}) {
     if (y >= 2 && allowSteepSlopes) {
       const nextY = y - 2;
       const exit = nextPos(x, nextY, z, heading, 1);
-      if (canFootprint(x, y, z, slopeFootprint2Down) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
-        placePieceAt(x, y, z, BlockType.Slope, (heading + 2) % 4, null, null, slopeFootprint2Down);
+      if (canFootprint(x, nextY, z, slopeFootprint2) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
+        placePieceAt(x, nextY, z, BlockType.Slope, heading, null, null, slopeFootprint2);
         x = exit.x; y = nextY; z = exit.z;
         continue;
       }
@@ -1112,8 +1106,8 @@ export function generateTrack(params = {}) {
     if (y >= 1) {
       const nextY = y - 1;
       const exit = nextPos(x, nextY, z, heading, 1);
-      if (canFootprint(x, y, z, slopeFootprint1Down) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
-        placePieceAt(x, y, z, BlockType.SlopeDown, (heading + 2) % 4, null, null, slopeFootprint1Down);
+      if (canFootprint(x, nextY, z, slopeFootprint1) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
+        placePieceAt(x, nextY, z, BlockType.SlopeDown, heading, null, null, slopeFootprint1);
         x = exit.x; y = nextY; z = exit.z;
         continue;
       }
