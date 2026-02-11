@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-10.12";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.2";
 
 const $ = (id) => document.getElementById(id);
 
@@ -63,7 +63,7 @@ function readParams() {
   return {
     name: $("name").value || "Generated Track",
     manualScenarioId: $("manualScenario")?.value || "",
-    length: Number($("length").value),
+    length: Math.min(750, Math.max(10, Number($("length").value))),
     elevation: Number($("elevation").value),
     curviness: Number($("curviness").value),
     numCheckpoints: Number($("checkpoints").value),

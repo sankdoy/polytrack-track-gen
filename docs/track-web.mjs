@@ -142,10 +142,13 @@ export function encodeV3ShareCode(name, trackData) {
 
 export const manualMiniTrackScenarios = [
   // Keep the dropdown small and numbered; add more only when we hit a new mismatch.
-  { id: "track1", label: "track1", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "track2", label: "track2", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "track3", label: "track3", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "track4", label: "track4", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] },
+  // Note: total pieces = (steps.length + Start + Finish). Aim for 5–8 total.
+  { id: "track1", label: "track1 (straight x6)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
+  { id: "track2", label: "track2 (S-bend short turns)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }] }, // 8 pieces
+  { id: "track3", label: "track3 (double sharp turns)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
+  { id: "track4", label: "track4 (TurnLong3 R + straights)", steps: [{ kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 6 pieces
+  { id: "track5", label: "track5 (TurnLong3 L + straights)", steps: [{ kind: "turn", dir: "L", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 6 pieces
+  { id: "track6", label: "track6 (upLong/downLong + turn)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "short" }] }, // 8 pieces
 ];
 
 function getScenario(id) {
