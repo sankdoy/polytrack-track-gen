@@ -16,6 +16,16 @@ function rgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+function cssVar(name, fallback) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+    const s = String(v || "").trim();
+    return s || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function colorForBlockType(blockType) {
   // Pastel palette (keep the preview fun, not game-accurate).
   if (blockType === 5) return { top: "#B5EAD7", side: "#98D9C8" }; // Start
@@ -214,17 +224,23 @@ export function createPreview(canvas, opts = {}) {
     const w = canvas.width;
     const h = canvas.height;
 
+    const bgTop = cssVar("--previewBgTop", "rgba(112, 214, 255, 0.22)");
+    const bgBottom = cssVar("--previewBgBottom", "rgba(181, 234, 215, 0.22)");
+    const gridCol = cssVar("--previewGrid", "rgba(27, 36, 51, 0.18)");
+    const ink = cssVar("--previewInk", "rgba(27, 36, 51, 0.24)");
+    const inkSoft = cssVar("--previewInkSoft", "rgba(27, 36, 51, 0.14)");
+
     // background
     ctx.clearRect(0, 0, w, h);
     const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, rgba("70D6FF", 0.22));
-    bg.addColorStop(1, rgba("B5EAD7", 0.22));
+    bg.addColorStop(0, bgTop);
+    bg.addColorStop(1, bgBottom);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
     // soft "hills"
     const hills = ctx.createRadialGradient(w * 0.5, h * 1.1, 10, w * 0.5, h * 1.05, w * 0.75);
-    hills.addColorStop(0, rgba("B5EAD7", 0.26));
+    hills.addColorStop(0, bgBottom);
     hills.addColorStop(1, rgba("B5EAD7", 0));
     ctx.fillStyle = hills;
     ctx.fillRect(0, 0, w, h);
@@ -266,7 +282,7 @@ export function createPreview(canvas, opts = {}) {
     // Draw a subtle ground grid
     ctx.save();
     ctx.globalAlpha = 0.22;
-    ctx.strokeStyle = rgba("2C3E50", 0.25);
+    ctx.strokeStyle = gridCol;
     ctx.beginPath();
     for (let t = -20; t <= 20; t++) {
       const a0 = applyYawPitch({ x: t, y: -center.y * 0.9 - 0.2, z: -20 }, state.yaw, state.pitch);
@@ -290,11 +306,11 @@ export function createPreview(canvas, opts = {}) {
       const pts = o.rotated.map((v) => projectToScreen(v, w, h, state.dist, state.scale));
 
       // Top face (4..7)
-      drawPoly(ctx, [pts[4], pts[5], pts[6], pts[7]], rgba(col.top, 0.92), rgba("2C3E50", 0.14));
+      drawPoly(ctx, [pts[4], pts[5], pts[6], pts[7]], rgba(col.top, 0.92), inkSoft);
       // Right-ish face (1,2,6,5)
-      drawPoly(ctx, [pts[1], pts[2], pts[6], pts[5]], rgba(col.side, 0.52), rgba("2C3E50", 0.10));
+      drawPoly(ctx, [pts[1], pts[2], pts[6], pts[5]], rgba(col.side, 0.52), inkSoft);
       // Front-ish face (2,3,7,6)
-      drawPoly(ctx, [pts[2], pts[3], pts[7], pts[6]], rgba(col.side, 0.42), rgba("2C3E50", 0.10));
+      drawPoly(ctx, [pts[2], pts[3], pts[7], pts[6]], rgba(col.side, 0.42), inkSoft);
 
       // Direction hint
       const rot = Number.isFinite(o.p.rotation) ? (o.p.rotation | 0) : 0;
@@ -303,7 +319,7 @@ export function createPreview(canvas, opts = {}) {
       const c3 = applyYawPitch({ x: o.c.x, y: o.c.y + height + 0.02, z: o.c.z }, state.yaw, state.pitch);
       const tip = projectToScreen(tip3, w, h, state.dist, state.scale);
       const cc = projectToScreen(c3, w, h, state.dist, state.scale);
-      ctx.strokeStyle = rgba("2C3E50", 0.26);
+      ctx.strokeStyle = ink;
       ctx.beginPath();
       ctx.moveTo(cc.x, cc.y);
       ctx.lineTo(tip.x, tip.y);
@@ -314,7 +330,7 @@ export function createPreview(canvas, opts = {}) {
     if (state.seq.length >= 2) {
       ctx.save();
       ctx.globalAlpha = 0.55;
-      ctx.strokeStyle = rgba("2C3E50", 0.24);
+      ctx.strokeStyle = ink;
       ctx.lineWidth = Math.max(2, Math.floor(Math.min(w, h) / 280));
       ctx.beginPath();
       for (let i = 0; i < state.seq.length; i++) {
@@ -339,7 +355,7 @@ export function createPreview(canvas, opts = {}) {
     // Empty hint
     if (!state.seq.length) {
       ctx.save();
-      ctx.fillStyle = rgba("2C3E50", 0.55);
+      ctx.fillStyle = ink;
       ctx.font = `${Math.max(12, Math.floor(Math.min(w, h) / 26))}px ui-rounded, system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.fillText("Generate a track to preview it", w / 2, h / 2);
@@ -357,4 +373,3 @@ export function createPreview(canvas, opts = {}) {
     dispose() { ro.disconnect(); },
   };
 }
-

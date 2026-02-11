@@ -6,27 +6,74 @@
     <title>PolyTrack Generator</title>
     <style>
       :root {
-        --base: #fafbfd;
-        --text: #2c3e50;
-        --muted: rgba(44, 62, 80, 0.68);
+        --bg0: #fafbfd;
+        --bg1: #eef3ff;
 
-        /* bright pastels */
-        --sky: #a8d5e2;
-        --baby: #70d6ff;
-        --mint: #b5ead7;
-        --peach: #ffd6a5;
-        --lav: #e8b4f0;
-        --lemon: #fff2cc;
+        --text: #1b2433;
+        --muted: rgba(27, 36, 51, 0.66);
+        --muted2: rgba(27, 36, 51, 0.56);
+        --ink92: rgba(27, 36, 51, 0.92);
+        --ink86: rgba(27, 36, 51, 0.86);
+        --ink80: rgba(27, 36, 51, 0.80);
+        --ink70: rgba(27, 36, 51, 0.70);
+        --ink62: rgba(27, 36, 51, 0.62);
 
-        --panel: rgba(255, 255, 255, 0.68);
-        --border: rgba(255, 255, 255, 0.75);
-        --hairline: rgba(44, 62, 80, 0.12);
+        --stroke10: rgba(27, 36, 51, 0.10);
+        --stroke12: rgba(27, 36, 51, 0.12);
+        --stroke14: rgba(27, 36, 51, 0.14);
+
+        /* accents */
+        --accentA: #b5ead7;
+        --accentB: #ffd6a5;
+        --accentC: #70d6ff;
+        --accentD: #e8b4f0;
+
+        /* glass */
+        --panel: rgba(255, 255, 255, 0.72);
+        --panel2: rgba(255, 255, 255, 0.60);
+        --border: rgba(255, 255, 255, 0.78);
 
         --shadow: 0 10px 30px rgba(34, 48, 68, 0.10);
         --radius: 18px;
 
         --good: #2e9e77;
         --bad: #d95454;
+
+        /* preview theme */
+        --previewBgTop: rgba(112, 214, 255, 0.22);
+        --previewBgBottom: rgba(181, 234, 215, 0.22);
+        --previewGrid: rgba(27, 36, 51, 0.18);
+        --previewInk: rgba(27, 36, 51, 0.24);
+        --previewInkSoft: rgba(27, 36, 51, 0.14);
+      }
+
+      html[data-theme="dark"] {
+        --bg0: #0f1320;
+        --bg1: #111a2a;
+
+        --text: #e7ecff;
+        --muted: rgba(231, 236, 255, 0.68);
+        --muted2: rgba(231, 236, 255, 0.56);
+        --ink92: rgba(231, 236, 255, 0.92);
+        --ink86: rgba(231, 236, 255, 0.86);
+        --ink80: rgba(231, 236, 255, 0.80);
+        --ink70: rgba(231, 236, 255, 0.70);
+        --ink62: rgba(231, 236, 255, 0.62);
+
+        --stroke10: rgba(231, 236, 255, 0.10);
+        --stroke12: rgba(231, 236, 255, 0.12);
+        --stroke14: rgba(231, 236, 255, 0.14);
+
+        --panel: rgba(16, 20, 34, 0.62);
+        --panel2: rgba(16, 20, 34, 0.46);
+        --border: rgba(231, 236, 255, 0.10);
+        --shadow: 0 16px 60px rgba(0, 0, 0, 0.35);
+
+        --previewBgTop: rgba(112, 214, 255, 0.10);
+        --previewBgBottom: rgba(232, 180, 240, 0.10);
+        --previewGrid: rgba(231, 236, 255, 0.10);
+        --previewInk: rgba(231, 236, 255, 0.18);
+        --previewInkSoft: rgba(231, 236, 255, 0.10);
       }
 
       * { box-sizing: border-box; margin: 0; }
@@ -35,28 +82,13 @@
       body {
         font-family: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background:
-          radial-gradient(1200px 800px at 20% -10%, rgba(112, 214, 255, 0.55), transparent 60%),
-          radial-gradient(900px 700px at 90% 0%, rgba(232, 180, 240, 0.35), transparent 60%),
-          radial-gradient(800px 650px at 60% 110%, rgba(181, 234, 215, 0.55), transparent 60%),
-          linear-gradient(180deg, var(--base), rgba(250, 251, 253, 0.92));
+          radial-gradient(900px 700px at 15% 0%, rgba(112, 214, 255, 0.22), transparent 60%),
+          radial-gradient(900px 700px at 95% 0%, rgba(232, 180, 240, 0.14), transparent 60%),
+          linear-gradient(180deg, var(--bg0), var(--bg1));
         color: var(--text);
         line-height: 1.5;
         min-height: 100vh;
         overflow-x: hidden;
-      }
-
-      body::before {
-        content: "";
-        position: fixed;
-        inset: -200px;
-        pointer-events: none;
-        background:
-          linear-gradient(135deg, rgba(44, 62, 80, 0.05) 0 1px, transparent 1px 100%),
-          linear-gradient(45deg, rgba(44, 62, 80, 0.04) 0 1px, transparent 1px 100%);
-        background-size: 90px 90px, 120px 120px;
-        transform: rotate(6deg);
-        opacity: 0.35;
-        filter: blur(0.2px);
       }
 
       .topbar {
@@ -64,9 +96,9 @@
         top: 0;
         z-index: 10;
         padding: 14px 18px;
-        background: rgba(250, 251, 253, 0.70);
+        background: color-mix(in oklab, var(--bg0) 76%, transparent);
         backdrop-filter: blur(14px) saturate(1.2);
-        border-bottom: 1px solid rgba(44, 62, 80, 0.10);
+        border-bottom: 1px solid var(--stroke10);
       }
 
       .topbar-inner {
@@ -103,16 +135,16 @@
         gap: 8px;
         padding: 6px 10px;
         border-radius: 999px;
-        border: 1px solid rgba(44, 62, 80, 0.14);
-        background: rgba(255, 255, 255, 0.66);
+        border: 1px solid var(--stroke14);
+        background: var(--panel2);
         box-shadow: 0 8px 24px rgba(34, 48, 68, 0.06);
-        color: rgba(44, 62, 80, 0.80);
+        color: var(--ink80);
         font-size: 0.75rem;
         font-weight: 700;
       }
 
       .badge .updated {
-        color: rgba(44, 62, 80, 0.62);
+        color: var(--ink62);
         font-weight: 600;
       }
 
@@ -129,8 +161,8 @@
         gap: 8px;
         padding: 8px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(44, 62, 80, 0.14);
-        background: rgba(255, 255, 255, 0.62);
+        border: 1px solid var(--stroke14);
+        background: var(--panel2);
         backdrop-filter: blur(10px) saturate(1.2);
         box-shadow: 0 10px 28px rgba(34, 48, 68, 0.08);
         text-decoration: none;
@@ -138,13 +170,14 @@
         font-weight: 800;
         transition: transform 0.15s, box-shadow 0.15s;
       }
+      button.chiplink { cursor: pointer; }
 
       .chiplink:hover { transform: translateY(-1px); box-shadow: 0 14px 44px rgba(34, 48, 68, 0.12); }
       .chiplink svg { width: 14px; height: 14px; }
 
       .support {
-        border-color: rgba(44, 62, 80, 0.10);
-        background: linear-gradient(135deg, rgba(181, 234, 215, 0.60), rgba(255, 214, 165, 0.54));
+        border-color: var(--stroke10);
+        background: linear-gradient(135deg, color-mix(in oklab, var(--accentA) 72%, transparent), color-mix(in oklab, var(--accentB) 62%, transparent));
       }
 
       main {
@@ -208,7 +241,7 @@
         font-size: 0.78rem;
         letter-spacing: 0.09em;
         text-transform: uppercase;
-        color: rgba(44, 62, 80, 0.62);
+        color: var(--ink62);
         margin-bottom: 12px;
         font-weight: 900;
       }
@@ -233,7 +266,7 @@
         font-weight: 700;
       }
 
-      label .val { color: rgba(44, 62, 80, 0.92); font-weight: 900; }
+      label .val { color: var(--ink92); font-weight: 900; }
 
       input[type="text"],
       input[type="number"],
@@ -241,9 +274,9 @@
         width: 100%;
         padding: 8px 10px;
         border-radius: 12px;
-        border: 1px solid rgba(44, 62, 80, 0.14);
-        background: rgba(248, 251, 255, 0.78);
-        color: rgba(44, 62, 80, 0.92);
+        border: 1px solid var(--stroke14);
+        background: color-mix(in oklab, var(--panel2) 72%, var(--bg0));
+        color: var(--ink92);
         font-size: 0.86rem;
         outline: none;
         transition: border-color 0.15s, box-shadow 0.15s;
@@ -252,8 +285,8 @@
       input[type="text"]:focus,
       input[type="number"]:focus,
       select:focus {
-        border-color: rgba(162, 217, 206, 0.95);
-        box-shadow: 0 0 0 4px rgba(181, 234, 215, 0.35), 0 14px 40px rgba(34, 48, 68, 0.10);
+        border-color: color-mix(in oklab, var(--accentA) 90%, transparent);
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--accentA) 35%, transparent), 0 14px 40px rgba(34, 48, 68, 0.10);
       }
 
       input[type="range"] {
@@ -295,9 +328,9 @@
         align-items: center;
         padding: 10px 14px;
         border-radius: 999px;
-        border: 1px solid rgba(44, 62, 80, 0.12);
-        background: linear-gradient(135deg, rgba(181, 234, 215, 0.92), rgba(255, 214, 165, 0.92));
-        color: rgba(44, 62, 80, 0.92);
+        border: 1px solid var(--stroke12);
+        background: linear-gradient(135deg, color-mix(in oklab, var(--accentA) 92%, transparent), color-mix(in oklab, var(--accentB) 92%, transparent));
+        color: var(--ink92);
         font-size: 0.86rem;
         font-weight: 900;
         cursor: pointer;
@@ -309,8 +342,8 @@
       .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
       .btn-secondary {
-        background: rgba(255, 255, 255, 0.65);
-        color: rgba(44, 62, 80, 0.88);
+        background: var(--panel2);
+        color: var(--ink86);
         font-weight: 850;
         box-shadow: 0 10px 30px rgba(34, 48, 68, 0.08);
       }
@@ -341,8 +374,8 @@
       .previewCanvasWrap {
         width: 100%;
         border-radius: 16px;
-        border: 1px solid rgba(44, 62, 80, 0.10);
-        background: linear-gradient(180deg, rgba(168, 213, 226, 0.40), rgba(181, 234, 215, 0.30));
+        border: 1px solid var(--stroke10);
+        background: linear-gradient(180deg, color-mix(in oklab, var(--accentC) 20%, transparent), color-mix(in oklab, var(--accentA) 18%, transparent));
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
         overflow: hidden;
         aspect-ratio: 16 / 10;
@@ -352,15 +385,15 @@
 
       .hint {
         margin-top: 10px;
-        color: rgba(44, 62, 80, 0.56);
+        color: var(--muted2);
         font-size: 0.78rem;
         font-weight: 700;
       }
 
       details {
-        border: 1px solid rgba(44, 62, 80, 0.10);
+        border: 1px solid var(--stroke10);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.52);
+        background: var(--panel2);
         box-shadow: 0 10px 30px rgba(34, 48, 68, 0.08);
         margin-bottom: 10px;
         overflow: hidden;
@@ -371,7 +404,7 @@
         padding: 12px 12px;
         user-select: none;
         font-weight: 900;
-        color: rgba(44, 62, 80, 0.80);
+        color: var(--ink80);
         list-style: none;
       }
 
@@ -384,8 +417,8 @@
       .accordionBody { padding: 12px 12px 2px; }
 
       .card {
-        background: rgba(255, 255, 255, 0.62);
-        border: 1px solid rgba(44, 62, 80, 0.10);
+        background: var(--panel2);
+        border: 1px solid var(--stroke10);
         border-radius: 16px;
         padding: 14px;
         margin-bottom: 10px;
@@ -405,13 +438,13 @@
 
       .code {
         font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
-        background: rgba(248, 251, 255, 0.78);
-        border: 1px solid rgba(44, 62, 80, 0.12);
+        background: color-mix(in oklab, var(--panel2) 72%, var(--bg0));
+        border: 1px solid var(--stroke12);
         border-radius: 14px;
         padding: 10px;
         word-break: break-all;
         font-size: 0.78rem;
-        color: rgba(44, 62, 80, 0.86);
+        color: var(--ink86);
         max-height: 100px;
         overflow: auto;
         line-height: 1.4;
@@ -422,12 +455,12 @@
 
       .desc {
         margin-top: 8px;
-        color: rgba(44, 62, 80, 0.70);
+        color: var(--ink70);
         white-space: pre-wrap;
         font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
         font-size: 0.72rem;
         line-height: 1.4;
-        border-left: 2px solid rgba(44, 62, 80, 0.12);
+        border-left: 2px solid var(--stroke12);
         padding-left: 10px;
       }
 
@@ -441,17 +474,15 @@
       <div class="topbar-inner">
         <div class="brand">
           <h1>PolyTrack Generator</h1>
-          <span class="sub">dreamy meadow edition</span>
-          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.20</span>
+          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.24</span>
         </div>
         <div class="top-actions">
-          <a class="chiplink" href="https://polytrack.fun" target="_blank" rel="noopener noreferrer" title="Open polytrack.fun">
+          <button class="chiplink" id="themeToggle" type="button" aria-pressed="false" title="Toggle dark mode">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M10 14a4 4 0 0 1 0-6l1-1a4 4 0 0 1 6 6l-1 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M14 10a4 4 0 0 1 0 6l-1 1a4 4 0 0 1-6-6l1-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M21 14.5A8.2 8.2 0 0 1 9.5 3a7.2 7.2 0 1 0 11.5 11.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
             </svg>
-            Share on polytrack.fun
-          </a>
+            Dark
+          </button>
           <a class="chiplink support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M7 9h11v3.5a4.5 4.5 0 0 1-4.5 4.5H9.5A4.5 4.5 0 0 1 5 12.5V11a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
@@ -607,6 +638,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-11.20"></script>
+    <script type="module" src="./app.mjs?v=2026-02-11.24"></script>
   </body>
 </html>

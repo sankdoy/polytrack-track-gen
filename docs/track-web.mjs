@@ -278,7 +278,7 @@ export const manualMiniTrackScenarios = [
   // Note: total pieces = (steps.length + Start + Finish). Aim for 6–10 total.
   { id: "ramp1", label: "ramp1 (up → flat×2 → down)", steps: [{ kind: "up" }, { kind: "straight" }, { kind: "straight" }, { kind: "down" }, { kind: "straight" }] }, // 7 pieces
   { id: "ramp2", label: "ramp2 (upLong → flat×2 → downLong)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 7 pieces
-  { id: "ramp3", label: "ramp3 (steepUp → flat×2 → steepDown)", steps: [{ kind: "steepUp" }, { kind: "straight" }, { kind: "straight" }, { kind: "steepDown" }, { kind: "straight" }] }, // 7 pieces
+  { id: "ramp3", label: "ramp3 (smooth +2: up → up → flat×2 → down → down)", steps: [{ kind: "up" }, { kind: "up" }, { kind: "straight" }, { kind: "straight" }, { kind: "down" }, { kind: "down" }, { kind: "straight" }] }, // 9 pieces
   { id: "mix1", label: "mix1 (upLong → up → down → downLong)", steps: [{ kind: "up", long: true }, { kind: "up" }, { kind: "straight" }, { kind: "down" }, { kind: "down", long: true }, { kind: "straight" }] }, // 8 pieces
   { id: "mix2", label: "mix2 (turn → ramps → turn)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }] }, // 8 pieces
 ];
@@ -351,8 +351,8 @@ export function generateManualMiniTrack(params = {}) {
 
     if (step.kind === "up") {
       const tiles = step.long ? 2 : 1;
-      // Empirical: Long slopes span 2 tiles but only change height by 1.
-      const dy = Number.isFinite(step.dy) ? step.dy : 1;
+      // PolyTrack14 semantics (calibrated via in-game fixes): Long slopes span 2 tiles and change height by 2.
+      const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
       add(step.long ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading);
       move(heading, tiles);
       y += dy;
@@ -363,8 +363,8 @@ export function generateManualMiniTrack(params = {}) {
 
     if (step.kind === "down") {
       const tiles = step.long ? 2 : 1;
-      // Empirical: Long slopes span 2 tiles but only change height by 1.
-      const dy = Number.isFinite(step.dy) ? step.dy : 1;
+      // PolyTrack14 semantics (calibrated via in-game fixes): Long slopes span 2 tiles and change height by 2.
+      const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
 
       const entranceX = before.x, entranceY = before.y, entranceZ = before.z;
       const anchorX = entranceX;
@@ -805,8 +805,8 @@ export function generateTrack(params = {}) {
 
   const placeSlopeUp = (longVariant) => {
     const footprintTiles = longVariant ? 2 : 1;
-    // Empirical: Long slopes span 2 tiles but only change height by 1.
-    const dy = 1;
+    // PolyTrack14 semantics (calibrated via in-game fixes): Long slopes span 2 tiles and change height by 2.
+    const dy = longVariant ? 2 : 1;
     const nextY = y + dy;
     if (nextY > maxHeightY) return false;
     // Over-approx vertical span for collision: occupies [0..dy] across its footprint.
@@ -822,8 +822,8 @@ export function generateTrack(params = {}) {
 
   const placeSlopeDown = (longVariant) => {
     const footprintTiles = longVariant ? 2 : 1;
-    // Empirical: Long slopes span 2 tiles but only change height by 1.
-    const dy = 1;
+    // PolyTrack14 semantics (calibrated via in-game fixes): Long slopes span 2 tiles and change height by 2.
+    const dy = longVariant ? 2 : 1;
     if (y < dy) return false;
     const nextY = y - dy;
     // Empirical: slope-down blocks store their Y at the lower (exit) height.
@@ -841,28 +841,16 @@ export function generateTrack(params = {}) {
   };
 
   const placeSlopeSteep = () => {
-    const nextY = y + 2;
-    if (nextY > maxHeightY) return false;
-    const fp = slopeFootprint2;
-    const exit = nextPos(x, y, z, heading, 1);
-    if (!canFootprint(x, y, z, fp)) return false;
-    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    placePiece(BlockType.Slope, heading, null, null, fp);
-    x = exit.x; y = nextY; z = exit.z;
-    return true;
+    // Avoid the diagonal ramp piece (BlockType.Slope). Treat "+2Y steep" as a long smooth ramp.
+    // This matches the in-game "smooth" ramp behavior used in your fixed ramp tracks.
+    if (!allowSteepSlopes) return false;
+    return placeSlopeUp(true);
   };
 
   const placeSteepDown = () => {
-    if (y < 2) return false;
-    const nextY = y - 2;
-    // Empirical: steep down stores at the lower (exit) height.
-    const fp = slopeFootprint2;
-    const exit = nextPos(x, nextY, z, heading, 1);
-    if (!canFootprint(x, nextY, z, fp)) return false;
-    if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    placePieceAt(x, nextY, z, BlockType.Slope, heading, null, null, fp);
-    x = exit.x; y = nextY; z = exit.z;
-    return true;
+    // Avoid the diagonal ramp piece (BlockType.Slope). Treat "-2Y steep" as a long smooth ramp.
+    if (!allowSteepSlopes) return false;
+    return placeSlopeDown(true);
   };
 
   const placeTurn90 = (turnRight, variant) => {
@@ -1037,10 +1025,10 @@ export function generateTrack(params = {}) {
           if (a === "straight") ok = placeStraightLike(BlockType.Straight, null);
           else if (a === "turnR") ok = placeTurn90(true, pickTurnVariant());
           else if (a === "turnL") ok = placeTurn90(false, pickTurnVariant());
-          else if (a === "up") ok = placeSlopeUp(rng() < 0.3);
-          else if (a === "upLong") ok = placeSlopeUp(true);
-          else if (a === "down") ok = placeSlopeDown(rng() < 0.3);
-          else if (a === "downLong") ok = placeSlopeDown(true);
+          else if (a === "up") ok = placeSlopeUp(allowSteepSlopes && rng() < 0.3);
+          else if (a === "upLong") ok = allowSteepSlopes && placeSlopeUp(true);
+          else if (a === "down") ok = placeSlopeDown(allowSteepSlopes && rng() < 0.3);
+          else if (a === "downLong") ok = allowSteepSlopes && placeSlopeDown(true);
           else if (a === "steepUp") ok = allowSteepSlopes && placeSlopeSteep();
           if (ok) {
             actionQueue.shift();
@@ -1058,12 +1046,12 @@ export function generateTrack(params = {}) {
         const r = rng();
         const descentBias = Math.min(0.6, y * 0.1); // Higher = more likely to descend
         if (r < descentBias) {
-          placed = placeSlopeDown(rng() < 0.3);
+          placed = placeSlopeDown(allowSteepSlopes && rng() < 0.3);
           if (!placed && allowSteepSlopes && y >= 2) placed = placeSteepDown();
         } else if (allowSteepSlopes && r < descentBias + 0.15) {
           placed = placeSlopeSteep();
         } else {
-          placed = placeSlopeUp(rng() < 0.3);
+          placed = placeSlopeUp(allowSteepSlopes && rng() < 0.3);
         }
         if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
       }
@@ -1095,22 +1083,10 @@ export function generateTrack(params = {}) {
   while (y > 0 && descentAttempts < 20) {
     descentAttempts++;
     if (y >= 2 && allowSteepSlopes) {
-      const nextY = y - 2;
-      const exit = nextPos(x, nextY, z, heading, 1);
-      if (canFootprint(x, nextY, z, slopeFootprint2) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
-        placePieceAt(x, nextY, z, BlockType.Slope, heading, null, null, slopeFootprint2);
-        x = exit.x; y = nextY; z = exit.z;
-        continue;
-      }
+      if (placeSteepDown()) continue;
     }
     if (y >= 1) {
-      const nextY = y - 1;
-      const exit = nextPos(x, nextY, z, heading, 1);
-      if (canFootprint(x, nextY, z, slopeFootprint1) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
-        placePieceAt(x, nextY, z, BlockType.SlopeDown, heading, null, null, slopeFootprint1);
-        x = exit.x; y = nextY; z = exit.z;
-        continue;
-      }
+      if (placeSlopeDown(false)) continue;
     }
     // Try turning to find a descent path
     const tryH = (heading + (rng() < 0.5 ? 1 : 3)) % 4;

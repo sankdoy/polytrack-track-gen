@@ -1,7 +1,8 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.20";
-import { createPreview } from "./preview.mjs?v=2026-02-11.20";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.24";
+import { createPreview } from "./preview.mjs?v=2026-02-11.24";
 
 const $ = (id) => document.getElementById(id);
+const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
 
 function bindRange(id, formatter) {
   const el = $(id);
@@ -29,48 +30,87 @@ function copyText(text) {
   return navigator.clipboard.writeText(text);
 }
 
-bindRange("length");
-bindRange("elevation");
-bindRange("curviness");
-bindRange("checkpoints");
-bindRange("maxHeight");
-bindRange("maxAttemptsPerPiece");
-bindRange("intersectionChance", (v) => Number(v).toFixed(2));
-bindRange("templateChance", (v) => Number(v).toFixed(2));
+function applyTheme(theme) {
+  const t = theme === "dark" ? "dark" : "light";
+  if (t === "dark") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem("theme", t); } catch {}
 
-const preview = (() => {
-  const canvas = $("previewCanvas");
-  if (!canvas) return null;
+  const btn = $("themeToggle");
+  if (btn) {
+    const isDark = t === "dark";
+    const svg = btn.querySelector("svg");
+    const label = isDark ? "Light" : "Dark";
+    btn.setAttribute("aria-pressed", isDark ? "true" : "false");
+    if (svg) btn.replaceChildren(svg, document.createTextNode(" " + label));
+    else btn.textContent = label;
+  }
+}
+
+function initTheme() {
+  let t = "light";
   try {
-    return createPreview(canvas, {
-      autoButton: $("previewAuto"),
-      resetButton: $("previewReset"),
+    t = localStorage.getItem("theme") || "";
+  } catch {}
+  if (t !== "dark" && t !== "light") {
+    t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  applyTheme(t);
+
+  const btn = $("themeToggle");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      const isDark = document.documentElement.dataset.theme === "dark";
+      applyTheme(isDark ? "light" : "dark");
     });
-  } catch (e) {
-    console.warn("Preview init failed:", e);
-    return null;
-  }
-})();
-
-const manualScenarioEl = $("manualScenario");
-if (manualScenarioEl) {
-  for (const s of manualMiniTrackScenarios) {
-    const opt = document.createElement("option");
-    opt.value = s.id;
-    opt.textContent = s.label;
-    manualScenarioEl.appendChild(opt);
   }
 }
 
-const updatedEl = $("updated");
-if (updatedEl) {
-  const d = new Date(document.lastModified);
-  updatedEl.textContent = Number.isFinite(d.valueOf()) ? ` Updated ${d.toLocaleDateString()}` : "";
-}
+if (hasDOM) {
+  initTheme();
 
-$("rollSeed").addEventListener("click", () => {
-  $("seed").value = String(Math.floor(Math.random() * 1_000_000));
-});
+  bindRange("length");
+  bindRange("elevation");
+  bindRange("curviness");
+  bindRange("checkpoints");
+  bindRange("maxHeight");
+  bindRange("maxAttemptsPerPiece");
+  bindRange("intersectionChance", (v) => Number(v).toFixed(2));
+  bindRange("templateChance", (v) => Number(v).toFixed(2));
+
+  const preview = (() => {
+    const canvas = $("previewCanvas");
+    if (!canvas) return null;
+    try {
+      return createPreview(canvas, {
+        autoButton: $("previewAuto"),
+        resetButton: $("previewReset"),
+      });
+    } catch (e) {
+      console.warn("Preview init failed:", e);
+      return null;
+    }
+  })();
+
+  const manualScenarioEl = $("manualScenario");
+  if (manualScenarioEl) {
+    for (const s of manualMiniTrackScenarios) {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = s.label;
+      manualScenarioEl.appendChild(opt);
+    }
+  }
+
+  const updatedEl = $("updated");
+  if (updatedEl) {
+    const d = new Date(document.lastModified);
+    updatedEl.textContent = Number.isFinite(d.valueOf()) ? ` Updated ${d.toLocaleDateString()}` : "";
+  }
+
+  $("rollSeed").addEventListener("click", () => {
+    $("seed").value = String(Math.floor(Math.random() * 1_000_000));
+  });
 
 function readParams() {
   const seedRaw = $("seed").value.trim();
@@ -247,7 +287,8 @@ async function generateBatch() {
   }
 }
 
-$("generateBtn").addEventListener("click", generateBatch);
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !$("generateBtn").disabled) generateBatch();
-});
+  $("generateBtn").addEventListener("click", generateBatch);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !$("generateBtn").disabled) generateBatch();
+  });
+}
