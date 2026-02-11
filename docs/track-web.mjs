@@ -141,33 +141,22 @@ export function encodeV3ShareCode(name, trackData) {
 // ---- Manual mini-tracks (for debugging alignment) ----
 
 export const manualMiniTrackScenarios = [
-  // Keep the dropdown small and numbered; add more only when we hit a new mismatch.
+  // Keep the dropdown small and numbered; only keep probes we still care about.
   // Note: total pieces = (steps.length + Start + Finish). Aim for 5–8 total.
   { id: "track1", label: "track1 (straight x6)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track2", label: "track2 (S-bend short turns)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }] }, // 8 pieces
   { id: "track3", label: "track3 (double sharp turns)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
   { id: "track4", label: "track4 (TurnLong3 R + straights)", steps: [{ kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 6 pieces
   { id: "track5", label: "track5 (TurnLong3 L + straights)", steps: [{ kind: "turn", dir: "L", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 6 pieces
   { id: "track6", label: "track6 (upLong/downLong + turn)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "short" }] }, // 8 pieces
 
-  // Mixed-turn stress tests (turn types chained together).
-  { id: "track7", label: "track7 (short → sharp → short)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
+  // Mixed-turn stress test that includes TurnShort(L) after other turn types.
   { id: "track8", label: "track8 (long → sharp → short)", steps: [{ kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track9", label: "track9 (chicane sharp R/L)", steps: [{ kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track10", label: "track10 (double long turns)", steps: [{ kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "long" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track11", label: "track11 (upLong → short → downLong → sharp)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }] }, // 8 pieces
-  { id: "track12", label: "track12 (back-to-back turns)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
 
-  // More mixed-turn probes (especially TurnShort(L) + other turn types).
-  { id: "track13", label: "track13 (short L → sharp R)", steps: [{ kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track14", label: "track14 (short L → long R)", steps: [{ kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track15", label: "track15 (long L → short R)", steps: [{ kind: "turn", dir: "L", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track16", label: "track16 (sharp R → short L → long R)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }] }, // 8 pieces
-
-  // TurnShort(L) calibration across multiple entry headings.
+  // TurnShort(L) calibration across all 4 entry headings.
   { id: "track17", label: "track17 (TurnShort L from N)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
   { id: "track18", label: "track18 (TurnShort L from E)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
   { id: "track19", label: "track19 (TurnShort L from S)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
+  { id: "track20", label: "track20 (TurnShort L from W)", steps: [{ kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
 ];
 
 function getScenario(id) {
