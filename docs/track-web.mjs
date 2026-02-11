@@ -311,12 +311,14 @@ export function generateManualMiniTrack(params = {}) {
         anchorZ += HEADING_DELTA[before.heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
       }
 
-      // Empirical: TurnShort(L) anchor is offset from the entrance by 1 tile (back along entry + forward along exit).
+      // Empirical: TurnShort(L) anchor is offset from the entrance:
+      // - 1 tile backward along entry heading
+      // - 2 tiles forward along exit (new) heading
       if (isShort && !turnRight) {
         const shift = sizeTiles - 1; // 1 tile for the 2x2 short turn
         const backHeading = (before.heading + 2) % 4;
-        anchorX += HEADING_DELTA[backHeading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
-        anchorZ += HEADING_DELTA[backHeading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+        anchorX += HEADING_DELTA[backHeading].dx * shift + HEADING_DELTA[newHeading].dx * (2 * shift);
+        anchorZ += HEADING_DELTA[backHeading].dz * shift + HEADING_DELTA[newHeading].dz * (2 * shift);
       }
 
       if (entryForwardTiles || entryRightTiles) {
@@ -761,12 +763,14 @@ export function generateTrack(params = {}) {
       fpForwardHeading = (heading + 2) % 4;
       fpSideHeading = (newHeading + 2) % 4;
     }
-    // Empirical: TurnShort(L) anchor is offset from the entrance by 1 tile (back along entry + forward along exit).
+    // Empirical: TurnShort(L) anchor is offset from the entrance:
+    // - 1 tile backward along entry heading
+    // - 2 tiles forward along exit (new) heading
     if (isShort && !turnRight) {
       const shift = footprintTiles - 1; // 1 tile for 2x2
       const backHeading = (heading + 2) % 4;
-      anchorX = entranceX + HEADING_DELTA[backHeading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
-      anchorZ = entranceZ + HEADING_DELTA[backHeading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+      anchorX = entranceX + HEADING_DELTA[backHeading].dx * shift + HEADING_DELTA[newHeading].dx * (2 * shift);
+      anchorZ = entranceZ + HEADING_DELTA[backHeading].dz * shift + HEADING_DELTA[newHeading].dz * (2 * shift);
     }
 
     const fp = (isLong || isShort) ? turnSquareFootprint(fpForwardHeading, fpSideHeading, footprintTiles, 0, 0) : flatFootprint;
