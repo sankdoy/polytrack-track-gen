@@ -13,5 +13,6 @@
     "**/out_0.5.ndjson": true,
     "**/out_0.5.ndjson.*": true,
     "**/v3_sharecodes.txt": true
-  }
+  },
+  "workbench.editor.restoreViewState": false
 }
