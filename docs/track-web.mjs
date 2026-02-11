@@ -163,6 +163,11 @@ export const manualMiniTrackScenarios = [
   { id: "track14", label: "track14 (short L → long R)", steps: [{ kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
   { id: "track15", label: "track15 (long L → short R)", steps: [{ kind: "turn", dir: "L", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
   { id: "track16", label: "track16 (sharp R → short L → long R)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }] }, // 8 pieces
+
+  // TurnShort(L) calibration across multiple entry headings.
+  { id: "track17", label: "track17 (TurnShort L from N)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
+  { id: "track18", label: "track18 (TurnShort L from E)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
+  { id: "track19", label: "track19 (TurnShort L from S)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
 ];
 
 function getScenario(id) {
