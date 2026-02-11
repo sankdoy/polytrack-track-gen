@@ -272,6 +272,9 @@ export function generateManualMiniTrack(params = {}) {
         turnRotation = (heading + 3) % 4;
         newHeading = (heading + 1) % 4;
       }
+      if (!turnRight && step.variant === "short") {
+        turnRotation = heading;
+      }
       const isShort = step.variant === "short";
       const isLong = step.variant === "long";
 
@@ -714,6 +717,11 @@ export function generateTrack(params = {}) {
     } else {
       turnRotation = (heading + 3) % 4;
       newHeading = (heading + 1) % 4;
+    }
+    // Calibration: TurnShort(L) uses a different rotation pivot in-game.
+    // Using entry-heading rotation for left turns prevents a consistent 1-tile drift.
+    if (!turnRight && variant === "short") {
+      turnRotation = heading;
     }
     // Turn geometry notes (empirically calibrated via in-game probes):
     // - TurnSharp: 1x1 footprint, exit is 1 tile in new heading.
