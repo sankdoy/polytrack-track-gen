@@ -10,6 +10,9 @@ export const BlockType = {
   Slope: 4,
   Start: 5,
   Finish: 6,
+  PillarTop: 19,
+  Pillar: 20,
+  PillarBase: 21,
   TurnShort: 36,
   SlopeUpLong: 38,
   SlopeDownLong: 39,
@@ -1211,8 +1214,13 @@ export function generateTrack(params = {}) {
 
       for (let yy = startY; yy >= minY; yy--) {
         if (!canReserveAt(colX, colZ, yy, yy)) break;
-        trackData.addPart(colX, yy, colZ, BlockType.Block, 0, RotationAxis.YPositive, ColorStyle.Default, null, null);
-        reserveAt(colX, colZ, yy, yy, BlockType.Block);
+        const t =
+          yy === startY ? BlockType.PillarTop :
+          yy === 0 ? BlockType.PillarBase :
+          BlockType.Pillar;
+        // In-game pillar pieces appear to use rotation=2 (180°) consistently; rotationAxis/color are default.
+        trackData.addPart(colX, yy, colZ, t, 2, RotationAxis.YPositive, ColorStyle.Default, null, null);
+        reserveAt(colX, colZ, yy, yy, t);
       }
     }
   }
@@ -1222,7 +1230,14 @@ export function generateTrack(params = {}) {
     const roadPositions = [];
     for (const [t, parts] of trackData.parts) {
       // Only treat road-like pieces as sources for nearby scenery placement.
-      if (t === BlockType.Block || t === BlockType.HalfBlock || t === BlockType.QuarterBlock) continue;
+      if (
+        t === BlockType.Block ||
+        t === BlockType.HalfBlock ||
+        t === BlockType.QuarterBlock ||
+        t === BlockType.PillarTop ||
+        t === BlockType.Pillar ||
+        t === BlockType.PillarBase
+      ) continue;
       for (const p of parts) roadPositions.push({ x: p.x, y: p.y, z: p.z });
     }
     for (const pos of roadPositions) {
