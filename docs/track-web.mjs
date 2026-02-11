@@ -23,10 +23,10 @@ export const BlockType = {
 };
 
 export const Environment = {
-  Default: 0,
-  Summer: 1,
-  Winter: 2,
-  Desert: 3,
+  Summer: 0,
+  Winter: 1,
+  Desert: 2,
+  Default: 3,
 };
 
 export const RotationAxis = { YPositive: 0 };
@@ -67,6 +67,32 @@ function customEncode(bytes) {
     result += ALPHABET[charIndex];
   }
   return result;
+}
+
+function writeI32LE(out, v) {
+  const x = v | 0;
+  out.push(x & 255, (x >> 8) & 255, (x >> 16) & 255, (x >> 24) & 255);
+}
+
+function writeU32LE(out, v) {
+  const x = (v >>> 0);
+  out.push(x & 255, (x >> 8) & 255, (x >> 16) & 255, (x >> 24) & 255);
+}
+
+function writeVarUintLE(out, v, bytes) {
+  let x = (v >>> 0);
+  for (let i = 0; i < bytes; i++) {
+    out.push(x & 255);
+    x >>>= 8;
+  }
+}
+
+function bytesForUnsigned(v) {
+  const x = (v >>> 0);
+  if (x <= 0xff) return 1;
+  if (x <= 0xffff) return 2;
+  if (x <= 0xffffff) return 3;
+  return 4;
 }
 
 // ---- Track data structures ----
@@ -138,25 +164,119 @@ export function encodeV3ShareCode(name, trackData) {
   return "v3" + nameLenBytes + nameEncoded + trackEncoded;
 }
 
+// ---- PolyTrack1 (new encoding) ----
+
+const PT1_CHECKPOINT_BLOCKS = new Set([BlockType.Checkpoint, 65, 75, 77]);
+const PT1_START_BLOCKS = new Set([BlockType.Start, 91, 92, 93]);
+
+function serializePolyTrack1Format(trackData) {
+  const parts = [];
+  for (const [, ps] of trackData.parts) for (const p of ps) parts.push(p);
+
+  let minX = 0, minY = 0, minZ = 0;
+  if (parts.length) {
+    minX = parts[0].x | 0;
+    minY = parts[0].y | 0;
+    minZ = parts[0].z | 0;
+    for (const p of parts) {
+      if (p.x < minX) minX = p.x | 0;
+      if (p.y < minY) minY = p.y | 0;
+      if (p.z < minZ) minZ = p.z | 0;
+    }
+  }
+
+  let maxDX = 0, maxDY = 0, maxDZ = 0;
+  for (const p of parts) {
+    const dx = (p.x - minX) >>> 0;
+    const dy = (p.y - minY) >>> 0;
+    const dz = (p.z - minZ) >>> 0;
+    if (dx > maxDX) maxDX = dx;
+    if (dy > maxDY) maxDY = dy;
+    if (dz > maxDZ) maxDZ = dz;
+  }
+
+  const bytesX = bytesForUnsigned(maxDX);
+  const bytesY = bytesForUnsigned(maxDY);
+  const bytesZ = bytesForUnsigned(maxDZ);
+  const packed = (bytesX & 3) | ((bytesY & 3) << 2) | ((bytesZ & 3) << 4);
+
+  const out = [];
+  out.push((trackData.environment ?? 0) & 255);
+  out.push((trackData.colorRepresentation ?? 28) & 255);
+  writeI32LE(out, minX);
+  writeI32LE(out, minY);
+  writeI32LE(out, minZ);
+  out.push(packed);
+
+  const byType = new Map();
+  for (const p of parts) {
+    const t = p.blockType & 255;
+    if (!byType.has(t)) byType.set(t, []);
+    byType.get(t).push(p);
+  }
+
+  const types = Array.from(byType.keys()).sort((a, b) => a - b);
+  for (const t of types) {
+    const ps = byType.get(t);
+    out.push(t & 255);
+    writeU32LE(out, ps.length);
+    for (const p of ps) {
+      writeVarUintLE(out, (p.x - minX) >>> 0, bytesX);
+      writeVarUintLE(out, (p.y - minY) >>> 0, bytesY);
+      writeVarUintLE(out, (p.z - minZ) >>> 0, bytesZ);
+      out.push((p.rotation ?? 0) & 255);
+      out.push((p.rotationAxis ?? 0) & 255);
+      out.push((p.color ?? 0) & 255);
+
+      if (PT1_CHECKPOINT_BLOCKS.has(t)) {
+        const co = (p.checkpointOrder ?? 0) & 0xffff;
+        out.push(co & 255, (co >> 8) & 255);
+      }
+      if (PT1_START_BLOCKS.has(t)) {
+        writeU32LE(out, (p.startOrder ?? 0) >>> 0);
+      }
+    }
+  }
+
+  return new Uint8Array(out);
+}
+
+export function encodePolyTrack1ShareCode(name, trackData, author = "") {
+  if (!globalThis.pako) throw new Error("pako not found on globalThis");
+
+  const nameBytes = new TextEncoder().encode(String(name ?? ""));
+  const authorBytes = new TextEncoder().encode(String(author ?? ""));
+
+  const header = [];
+  header.push(Math.min(255, nameBytes.length));
+  for (let i = 0; i < Math.min(255, nameBytes.length); i++) header.push(nameBytes[i]);
+  header.push(Math.min(255, authorBytes.length));
+  for (let i = 0; i < Math.min(255, authorBytes.length); i++) header.push(authorBytes[i]);
+
+  const body = serializePolyTrack1Format(trackData);
+  const inflated1 = new Uint8Array(header.length + body.length);
+  inflated1.set(header, 0);
+  inflated1.set(body, header.length);
+
+  const innerDeflated = globalThis.pako.deflate(inflated1, { level: 9 });
+  const innerStr = customEncode(innerDeflated);
+
+  const outerBytes = new TextEncoder().encode(innerStr);
+  const outerDeflated = globalThis.pako.deflate(outerBytes, { level: 9 });
+  const outerStr = customEncode(outerDeflated);
+
+  return "PolyTrack1" + outerStr;
+}
+
 // ---- Manual mini-tracks (for debugging alignment) ----
 
 export const manualMiniTrackScenarios = [
-  // Keep the dropdown small and numbered; only keep probes we still care about.
-  // Note: total pieces = (steps.length + Start + Finish). Aim for 5–8 total.
-  { id: "track1", label: "track1 (straight x6)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track3", label: "track3 (double sharp turns)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track4", label: "track4 (TurnLong3 R + straights)", steps: [{ kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 6 pieces
-  { id: "track5", label: "track5 (TurnLong3 L + straights)", steps: [{ kind: "turn", dir: "L", variant: "long" }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] }, // 6 pieces
-  { id: "track6", label: "track6 (upLong/downLong + turn)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "short" }] }, // 8 pieces
-
-  // Mixed-turn stress test that includes TurnShort(L) after other turn types.
-  { id: "track8", label: "track8 (long → sharp → short)", steps: [{ kind: "turn", dir: "R", variant: "long" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
-
-  // TurnShort(L) calibration across all 4 entry headings.
-  { id: "track17", label: "track17 (TurnShort L from N)", steps: [{ kind: "straight" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
-  { id: "track18", label: "track18 (TurnShort L from E)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
-  { id: "track19", label: "track19 (TurnShort L from S)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track20", label: "track20 (TurnShort L from W)", steps: [{ kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }, { kind: "straight" }] }, // 7 pieces
+  // Ramp calibration probes (we're focusing on slope anchoring + rotation).
+  // Note: total pieces = (steps.length + Start + Finish). Aim for 6–10 total.
+  { id: "ramp1", label: "ramp1 (up → flat → down)", steps: [{ kind: "up" }, { kind: "straight" }, { kind: "down" }, { kind: "straight" }] }, // 6 pieces
+  { id: "ramp2", label: "ramp2 (upLong → flat → downLong)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 6 pieces
+  { id: "ramp3", label: "ramp3 (steepUp → flat → steepDown)", steps: [{ kind: "steepUp" }, { kind: "straight" }, { kind: "steepDown" }, { kind: "straight" }] }, // 6 pieces
+  { id: "ramp4", label: "ramp4 (east-facing ramps)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 8 pieces
 ];
 
 function getScenario(id) {
@@ -167,13 +287,14 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "track1",
+    scenarioId = "ramp1",
     name = "Manual Mini Track",
     environment = "Summer",
+    format = "polytrack1",
   } = params;
 
   const env = Environment[environment] ?? Environment.Summer;
-  const trackData = new TrackData(env, 0);
+  const trackData = new TrackData(env, 28);
   const placedSequence = [];
   const anchorTrace = [];
 
@@ -237,10 +358,11 @@ export function generateManualMiniTrack(params = {}) {
 
     if (step.kind === "down") {
       const tiles = step.long ? 2 : 1;
-      // Match generator behavior: slope-down pieces are anchored at the lower (exit) height.
       const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
-      const anchorAt = step.anchorAt || "low"; // "low" or "high"
-      const anchorForwardTiles = Number.isFinite(step.anchorForwardTiles) ? step.anchorForwardTiles : (step.long ? 1 : 0);
+      // Match generator behavior: slope-down pieces are anchored at the higher (entrance) height,
+      // and store their rotation as the "uphill" direction (heading+2).
+      const anchorAt = step.anchorAt || "high"; // "high" or "low" (override for experiments)
+      const anchorForwardTiles = Number.isFinite(step.anchorForwardTiles) ? step.anchorForwardTiles : 0;
       const anchorYOffset = Number.isFinite(step.anchorYOffset) ? step.anchorYOffset : 0;
 
       if (anchorAt !== "low" && anchorAt !== "high") {
@@ -253,7 +375,8 @@ export function generateManualMiniTrack(params = {}) {
       const anchorZ = entranceZ + HEADING_DELTA[before.heading].dz * anchorForwardTiles;
       const anchorY = anchorBaseY + anchorYOffset;
 
-      addAt(anchorX, anchorY, anchorZ, step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading);
+      const storedRotation = (before.heading + 2) % 4;
+      addAt(anchorX, anchorY, anchorZ, step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, storedRotation);
 
       // Cursor always advances from entrance; height decreases by dy.
       x = entranceX; y = entranceY; z = entranceZ;
@@ -263,10 +386,32 @@ export function generateManualMiniTrack(params = {}) {
       anchorTrace.push({
         label: `${step.long ? "SlopeDownLong" : "SlopeDown"} anchor=${anchorAt} F=${anchorForwardTiles} Y=${anchorYOffset}`,
         ...before,
-        rotation: heading,
+        rotation: storedRotation,
         anchor: { x: anchorX, y: anchorY, z: anchorZ },
         after: { x, y, z, heading },
       });
+      continue;
+    }
+
+    if (step.kind === "steepUp") {
+      const dy = Number.isFinite(step.dy) ? step.dy : 2;
+      add(BlockType.Slope, heading);
+      move(heading, 1);
+      y += dy;
+      assertGrid();
+      anchorTrace.push({ label: "Slope(steep up)", ...before, rotation: heading, after: { x, y, z, heading } });
+      continue;
+    }
+
+    if (step.kind === "steepDown") {
+      const dy = Number.isFinite(step.dy) ? step.dy : 2;
+      const storedRotation = (before.heading + 2) % 4;
+      // Anchor at the higher (entrance) height.
+      add(BlockType.Slope, storedRotation);
+      move(heading, 1);
+      y -= dy;
+      assertGrid();
+      anchorTrace.push({ label: "Slope(steep down)", ...before, rotation: storedRotation, after: { x, y, z, heading } });
       continue;
     }
 
@@ -341,7 +486,10 @@ export function generateManualMiniTrack(params = {}) {
   add(BlockType.Finish, heading);
   anchorTrace.push({ event: "after", label: "Finish", x, y, z, heading });
 
-  const shareCode = encodeV3ShareCode(name, trackData);
+  const shareCode =
+    format === "v3"
+      ? encodeV3ShareCode(name, trackData)
+      : encodePolyTrack1ShareCode(name, trackData, "");
   return { shareCode, trackData, name, seed: null, placedSequence, anchorTrace, manualScenarioId: scenarioId, manualScenarioLabel: scenario.label };
 }
 
@@ -386,6 +534,7 @@ export function generateTrack(params = {}) {
     intersectionChance = 0.15,
     templateChance = 0.25,
     allowSteepSlopes = true,
+    format = "polytrack1",
   } = params;
 
   const rng = createRNG(seed);
@@ -512,6 +661,8 @@ export function generateTrack(params = {}) {
   const flatFootprint = [{ dx: 0, dz: 0, yMin: 0, yMax: 0 }];
   const slopeFootprint1 = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
   const slopeFootprint2 = [{ dx: 0, dz: 0, yMin: 0, yMax: 2 }];
+  const slopeFootprint1Down = [{ dx: 0, dz: 0, yMin: -1, yMax: 0 }];
+  const slopeFootprint2Down = [{ dx: 0, dz: 0, yMin: -2, yMax: 0 }];
 
   const forwardFootprint = (h, tiles, yMin, yMax) => {
     const fp = [];
@@ -677,24 +828,18 @@ export function generateTrack(params = {}) {
     const footprintTiles = longVariant ? 2 : 1;
     const dy = longVariant ? 2 : 1;
     if (y < dy) return false;
-    const nextY = y - dy; // slope-down blocks are anchored at the lower (exit) height
-    // Anchor/footprint calibration:
-    // Empirically, SlopeDownLong appears to store its anchor 1 tile forward from the entrance (still at low height).
-    // That means its 2-tile footprint covers [anchor] + [one tile backward].
-    const entranceX = x, entranceZ = z;
-    const anchorX = longVariant ? (x + HEADING_DELTA[heading].dx * 1) : x;
-    const anchorZ = longVariant ? (z + HEADING_DELTA[heading].dz * 1) : z;
-    // Over-approx vertical span for collision: occupies [0..dy] across its footprint.
+    const nextY = y - dy;
+    const anchorX = x, anchorY = y, anchorZ = z; // slope-down blocks are anchored at the higher (entrance) height
+    const storedRotation = (heading + 2) % 4; // store "uphill" direction
+    // Over-approx vertical span for collision: occupies [-dy..0] across its forward footprint.
     const fp = longVariant
-      ? forwardFootprint((heading + 2) % 4, 2, 0, dy) // anchor + 1 tile backward
-      : forwardFootprint(heading, 1, 0, dy);
-    const exitTiles = footprintTiles; // advance enough to clear the footprint
-    const exit = nextPos(entranceX, nextY, entranceZ, heading, exitTiles);
-    if (!canFootprint(anchorX, nextY, anchorZ, fp)) return false;
+      ? forwardFootprint(heading, 2, -dy, 0)
+      : forwardFootprint(heading, 1, -dy, 0);
+    const exit = nextPos(x, nextY, z, heading, footprintTiles);
+    if (!canFootprint(anchorX, anchorY, anchorZ, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    y = nextY;
-    placePieceAt(anchorX, nextY, anchorZ, longVariant ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading, null, null, fp);
-    x = exit.x; z = exit.z;
+    placePieceAt(anchorX, anchorY, anchorZ, longVariant ? BlockType.SlopeDownLong : BlockType.SlopeDown, storedRotation, null, null, fp);
+    x = exit.x; y = nextY; z = exit.z;
     return true;
   };
 
@@ -713,13 +858,12 @@ export function generateTrack(params = {}) {
   const placeSteepDown = () => {
     if (y < 2) return false;
     const nextY = y - 2;
-    const fp = slopeFootprint2;
+    const fp = slopeFootprint2Down;
     const exit = nextPos(x, nextY, z, heading, 1);
-    if (!canFootprint(x, nextY, z, fp)) return false;
+    if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    y = nextY;
-    placePiece(BlockType.Slope, (heading + 2) % 4, null, null, fp);
-    x = exit.x; z = exit.z;
+    placePieceAt(x, y, z, BlockType.Slope, (heading + 2) % 4, null, null, fp);
+    x = exit.x; y = nextY; z = exit.z;
     return true;
   };
 
@@ -953,24 +1097,20 @@ export function generateTrack(params = {}) {
   while (y > 0 && descentAttempts < 20) {
     descentAttempts++;
     if (y >= 2 && allowSteepSlopes) {
-      const anchorY = y - 2;
-      const exit = nextPos(x, anchorY, z, heading, 1);
-      if (canFootprint(x, anchorY, z, slopeFootprint2) && (isFree(exit.x, anchorY, exit.z) || descentAttempts > 15)) {
-        y = anchorY;
-        placePiece(BlockType.Slope, (heading + 2) % 4, null, null, slopeFootprint2);
-        const e = nextPos(x, y, z, heading, 1);
-        x = e.x; z = e.z;
+      const nextY = y - 2;
+      const exit = nextPos(x, nextY, z, heading, 1);
+      if (canFootprint(x, y, z, slopeFootprint2Down) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
+        placePieceAt(x, y, z, BlockType.Slope, (heading + 2) % 4, null, null, slopeFootprint2Down);
+        x = exit.x; y = nextY; z = exit.z;
         continue;
       }
     }
     if (y >= 1) {
-      const anchorY = y - 1;
-      const exit = nextPos(x, anchorY, z, heading, 1);
-      if (canFootprint(x, anchorY, z, slopeFootprint1) && (isFree(exit.x, anchorY, exit.z) || descentAttempts > 15)) {
-        y = anchorY;
-        placePiece(BlockType.SlopeDown, heading, null, null, slopeFootprint1);
-        const e = nextPos(x, y, z, heading, 1);
-        x = e.x; z = e.z;
+      const nextY = y - 1;
+      const exit = nextPos(x, nextY, z, heading, 1);
+      if (canFootprint(x, y, z, slopeFootprint1Down) && (isFree(exit.x, nextY, exit.z) || descentAttempts > 15)) {
+        placePieceAt(x, y, z, BlockType.SlopeDown, (heading + 2) % 4, null, null, slopeFootprint1Down);
+        x = exit.x; y = nextY; z = exit.z;
         continue;
       }
     }
@@ -1020,7 +1160,7 @@ export function generateTrack(params = {}) {
   }
 
   // ---- Build TrackData ----
-  const trackData = new TrackData(env, 0);
+  const trackData = new TrackData(env, 28);
   const placedParts = Array.from(placedByCell.values()).sort((a, b) => {
     if (a.blockType !== b.blockType) return a.blockType - b.blockType;
     if (a.y !== b.y) return a.y - b.y;
@@ -1100,6 +1240,9 @@ export function generateTrack(params = {}) {
     }
   }
 
-  const shareCode = encodeV3ShareCode(name, trackData);
+  const shareCode =
+    format === "v3"
+      ? encodeV3ShareCode(name, trackData)
+      : encodePolyTrack1ShareCode(name, trackData, "");
   return { shareCode, trackData, name, seed, placedSequence };
 }

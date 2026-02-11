@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.14";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.16";
 
 const $ = (id) => document.getElementById(id);
 
@@ -76,6 +76,7 @@ function readParams() {
     allowIntersections: $("allowIntersections").checked,
     intersectionChance: Number($("intersectionChance").value),
     templateChance: Number($("templateChance").value),
+    format: "polytrack1",
     seed,
   };
 }

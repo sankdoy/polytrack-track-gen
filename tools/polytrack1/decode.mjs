@@ -239,6 +239,6 @@ if (dumpParts) {
     const p = parts[i];
     const name = BLOCK_NAMES[p.blockType] || String(p.blockType);
     // eslint-disable-next-line no-console
-    console.log(`${i}: ${name}  (${p.x},${p.y},${p.z}) rot=${p.rotation}`);
+    console.log(`${i}: ${name}  (${p.x},${p.y},${p.z}) rot=${p.rotation} axis=${p.rotAxis} color=${p.color}`);
   }
 }
