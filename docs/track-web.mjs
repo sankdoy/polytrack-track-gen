@@ -316,12 +316,12 @@ export function generateManualMiniTrack(params = {}) {
         anchorZ += HEADING_DELTA[before.heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
       }
 
-      // Empirical: TurnShort(L) anchor is offset from the entrance:
-      // - 2 tiles forward along exit (new) heading
+      // Empirical: TurnShort(L) stores its anchor at the opposite corner of its 2x2 footprint:
+      // shift 1 tile along the entry heading + 1 tile along the exit (new) heading.
       if (isShort && !turnRight) {
         const shift = sizeTiles - 1; // 1 tile for the 2x2 short turn
-        anchorX += HEADING_DELTA[newHeading].dx * (2 * shift);
-        anchorZ += HEADING_DELTA[newHeading].dz * (2 * shift);
+        anchorX += HEADING_DELTA[before.heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+        anchorZ += HEADING_DELTA[before.heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
       }
 
       if (entryForwardTiles || entryRightTiles) {
@@ -766,12 +766,13 @@ export function generateTrack(params = {}) {
       fpForwardHeading = (heading + 2) % 4;
       fpSideHeading = (newHeading + 2) % 4;
     }
-    // Empirical: TurnShort(L) anchor is offset from the entrance:
-    // - 2 tiles forward along exit (new) heading
+    // Empirical: TurnShort(L) stores its anchor at the opposite corner of its 2x2 footprint.
     if (isShort && !turnRight) {
       const shift = footprintTiles - 1; // 1 tile for 2x2
-      anchorX = entranceX + HEADING_DELTA[newHeading].dx * (2 * shift);
-      anchorZ = entranceZ + HEADING_DELTA[newHeading].dz * (2 * shift);
+      anchorX = entranceX + HEADING_DELTA[heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+      anchorZ = entranceZ + HEADING_DELTA[heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+      fpForwardHeading = (heading + 2) % 4;
+      fpSideHeading = (newHeading + 2) % 4;
     }
 
     const fp = (isLong || isShort) ? turnSquareFootprint(fpForwardHeading, fpSideHeading, footprintTiles, 0, 0) : flatFootprint;

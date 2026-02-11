@@ -179,12 +179,13 @@ function decodePolyTrack1(code) {
 
 function usage() {
   // eslint-disable-next-line no-console
-  console.error("Usage: node tools/polytrack1/decode.mjs \"PolyTrack1...\"");
+  console.error("Usage: node tools/polytrack1/decode.mjs \"PolyTrack1...\" [--parts]");
   process.exit(2);
 }
 
 const code = process.argv[2];
 if (!code) usage();
+const dumpParts = process.argv.includes("--parts");
 
 const decoded = decodePolyTrack1(code.trim());
 if (!decoded || decoded.error) {
@@ -205,4 +206,39 @@ console.log(`name=${JSON.stringify(decoded.name)} author=${JSON.stringify(decode
 for (const [id, c] of Array.from(counts.entries()).sort((a, b) => a[0] - b[0])) {
   // eslint-disable-next-line no-console
   console.log(`${id}\\t${c}`);
+}
+
+if (dumpParts) {
+  const BLOCK_NAMES = {
+    0: "Straight",
+    1: "TurnSharp",
+    2: "SlopeUp",
+    3: "SlopeDown",
+    4: "Slope",
+    5: "Start",
+    6: "Finish",
+    36: "TurnShort",
+    38: "SlopeUpLong",
+    39: "SlopeDownLong",
+    43: "IntersectionT",
+    44: "IntersectionCross",
+    52: "Checkpoint",
+    83: "TurnLong3",
+  };
+
+  const parts = decoded.parts.slice().sort((a, b) => {
+    if (a.y !== b.y) return a.y - b.y;
+    if (a.z !== b.z) return a.z - b.z;
+    if (a.x !== b.x) return a.x - b.x;
+    if (a.blockType !== b.blockType) return a.blockType - b.blockType;
+    return a.rotation - b.rotation;
+  });
+  // eslint-disable-next-line no-console
+  console.log("\nparts:");
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    const name = BLOCK_NAMES[p.blockType] || String(p.blockType);
+    // eslint-disable-next-line no-console
+    console.log(`${i}: ${name}  (${p.x},${p.y},${p.z}) rot=${p.rotation}`);
+  }
 }
