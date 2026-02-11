@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.6";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.7";
 
 const $ = (id) => document.getElementById(id);
 

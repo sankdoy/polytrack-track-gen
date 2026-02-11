@@ -286,11 +286,6 @@ export function generateManualMiniTrack(params = {}) {
         turnRotation = (heading + 3) % 4;
         newHeading = (heading + 1) % 4;
       }
-      // Calibration: TurnShort appears to use a different rotation mapping for left turns than other turn pieces.
-      // Using newHeading here makes the in-game mesh orient correctly for TurnShort(L) in mixed-turn scenarios.
-      if (!turnRight && step.variant === "short") {
-        turnRotation = newHeading;
-      }
       const isShort = step.variant === "short";
       const isLong = step.variant === "long";
 
@@ -733,10 +728,6 @@ export function generateTrack(params = {}) {
     } else {
       turnRotation = (heading + 3) % 4;
       newHeading = (heading + 1) % 4;
-    }
-    // Calibration: TurnShort(L) rotation mapping differs from TurnSharp/TurnLong3.
-    if (!turnRight && variant === "short") {
-      turnRotation = newHeading;
     }
     // Turn geometry notes (empirically calibrated via in-game probes):
     // - TurnSharp: 1x1 footprint, exit is 1 tile in new heading.
