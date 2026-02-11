@@ -166,8 +166,8 @@ export const manualMiniTrackScenarios = [
   // Entry-offset variants (try shifting where we *place* the TurnLong3 anchor, to see if the piece’s internal anchor differs).
   // entryRightTiles: +1 means shift 1 tile to the RIGHT relative to travel direction before placing the piece.
   // entryForwardTiles: +1 means shift 1 tile FORWARD relative to travel direction before placing the piece.
-  { id: "probe_straight_then_turnLong3_L_entryF1_Rm1", label: "Probe: Straight → TurnLong3 (L, entry F+1 R-1) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "L", variant: "long", exitTiles: 5, lateralTiles: 4, entryForwardTiles: 1, entryRightTiles: -1 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
-  { id: "probe_straight_then_turnLong3_R_entryF1_Rp1", label: "Probe: Straight → TurnLong3 (R, entry F+1 R+1) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "R", variant: "long", exitTiles: 5, lateralTiles: 4, entryForwardTiles: 1, entryRightTiles: 1 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_straight_then_turnLong3_L_entryF1_Rm1", label: "Diagnostic: Straight → TurnLong3 (L, entry F+1 R-1) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "L", variant: "long", exitTiles: 5, lateralTiles: 4, entryForwardTiles: 1, entryRightTiles: -1 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
+  { id: "probe_straight_then_turnLong3_R_entryF1_Rp1", label: "Diagnostic: Straight → TurnLong3 (R, entry F+1 R+1) → Straight×3", steps: [{ kind: "straight" }, { kind: "turn", dir: "R", variant: "long", exitTiles: 5, lateralTiles: 4, entryForwardTiles: 1, entryRightTiles: 1 }, { kind: "straight" }, { kind: "straight" }, { kind: "straight" }] },
 
   { id: "probe_turnShort_R_then_up", label: "Probe: TurnShort (R) → SlopeUp → Straight×2", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: false }, { kind: "straight" }, { kind: "straight" }] },
   { id: "probe_up_then_turnShort_R", label: "Probe: SlopeUp → TurnShort (R) → Straight×2", steps: [{ kind: "up", long: false }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight" }, { kind: "straight" }] },
@@ -175,6 +175,7 @@ export const manualMiniTrackScenarios = [
   { id: "probe_upLong_straight_downLong", label: "Probe: SlopeUpLong → Straight → SlopeDownLong → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] },
   { id: "probe_upLong_straight_downLong_highAnchor", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (high-anchor) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "high" }, { kind: "straight" }] },
   { id: "probe_upLong_straight_downLong_highAnchor_offset", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (high-anchor, F+1, Y-1) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "high", anchorForwardTiles: 1, anchorYOffset: -1 }, { kind: "straight" }] },
+  { id: "probe_upLong_straight_downLong_lowAnchor_F1", label: "Probe: SlopeUpLong → Straight → SlopeDownLong (low-anchor, F+1) → Straight", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true, anchorAt: "low", anchorForwardTiles: 1 }, { kind: "straight" }] },
 
   // Minimal “termination-only” checks (kept for quick sanity, but not great at validating exit transforms).
   { id: "sanity_start_straight_finish", label: "Sanity: Start → Straight → Finish", steps: [{ kind: "straight" }] },
@@ -261,7 +262,7 @@ export function generateManualMiniTrack(params = {}) {
       // Match generator behavior: slope-down pieces are anchored at the lower (exit) height.
       const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
       const anchorAt = step.anchorAt || "low"; // "low" or "high"
-      const anchorForwardTiles = Number.isFinite(step.anchorForwardTiles) ? step.anchorForwardTiles : 0;
+      const anchorForwardTiles = Number.isFinite(step.anchorForwardTiles) ? step.anchorForwardTiles : (step.long ? 1 : 0);
       const anchorYOffset = Number.isFinite(step.anchorYOffset) ? step.anchorYOffset : 0;
 
       if (anchorAt !== "low" && anchorAt !== "high") {
@@ -690,14 +691,22 @@ export function generateTrack(params = {}) {
     const dy = longVariant ? 2 : 1;
     if (y < dy) return false;
     const nextY = y - dy; // slope-down blocks are anchored at the lower (exit) height
+    // Anchor/footprint calibration:
+    // Empirically, SlopeDownLong appears to store its anchor 1 tile forward from the entrance (still at low height).
+    // That means its 2-tile footprint covers [anchor] + [one tile backward].
+    const entranceX = x, entranceZ = z;
+    const anchorX = longVariant ? (x + HEADING_DELTA[heading].dx * 1) : x;
+    const anchorZ = longVariant ? (z + HEADING_DELTA[heading].dz * 1) : z;
     // Over-approx vertical span for collision: occupies [0..dy] across its footprint.
-    const fp = forwardFootprint(heading, footprintTiles, 0, dy);
+    const fp = longVariant
+      ? forwardFootprint((heading + 2) % 4, 2, 0, dy) // anchor + 1 tile backward
+      : forwardFootprint(heading, 1, 0, dy);
     const exitTiles = footprintTiles; // advance enough to clear the footprint
-    const exit = nextPos(x, nextY, z, heading, exitTiles);
-    if (!canFootprint(x, nextY, z, fp)) return false;
+    const exit = nextPos(entranceX, nextY, entranceZ, heading, exitTiles);
+    if (!canFootprint(anchorX, nextY, anchorZ, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
     y = nextY;
-    placePiece(longVariant ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading, null, null, fp);
+    placePieceAt(anchorX, nextY, anchorZ, longVariant ? BlockType.SlopeDownLong : BlockType.SlopeDown, heading, null, null, fp);
     x = exit.x; z = exit.z;
     return true;
   };
