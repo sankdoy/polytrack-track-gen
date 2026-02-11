@@ -1,5 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.24";
-import { createPreview } from "./preview.mjs?v=2026-02-11.24";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.25";
 
 const $ = (id) => document.getElementById(id);
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
@@ -78,20 +77,6 @@ if (hasDOM) {
   bindRange("intersectionChance", (v) => Number(v).toFixed(2));
   bindRange("templateChance", (v) => Number(v).toFixed(2));
 
-  const preview = (() => {
-    const canvas = $("previewCanvas");
-    if (!canvas) return null;
-    try {
-      return createPreview(canvas, {
-        autoButton: $("previewAuto"),
-        resetButton: $("previewReset"),
-      });
-    } catch (e) {
-      console.warn("Preview init failed:", e);
-      return null;
-    }
-  })();
-
   const manualScenarioEl = $("manualScenario");
   if (manualScenarioEl) {
     for (const s of manualMiniTrackScenarios) {
@@ -152,19 +137,12 @@ function renderResults(items) {
       <div class="code">${esc(r.shareCode)}</div>
       <div class="actions">
         <button class="btn btn-secondary" data-action="copy" type="button">Copy</button>
-        <button class="btn btn-secondary" data-action="preview" type="button">Preview</button>
       </div>
       <details>
         <summary>Show details</summary>
         <div class="desc">${esc(r.details)}</div>
       </details>
     `;
-    const onPreview = () => {
-      if (!preview) return;
-      if (Array.isArray(r.placedSequence) && r.placedSequence.length) {
-        preview.setSequence(r.placedSequence, r.name);
-      }
-    };
 
     card.querySelector('[data-action="copy"]').addEventListener("click", async () => {
       try {
@@ -175,9 +153,6 @@ function renderResults(items) {
         setStatus("Clipboard copy failed", "bad");
       }
     });
-
-    card.querySelector('[data-action="preview"]').addEventListener("click", onPreview);
-    card.querySelector(".code").addEventListener("click", onPreview);
 
     container.appendChild(card);
   }
@@ -241,14 +216,12 @@ async function generateBatch() {
         name: base.name,
         environment: base.environment,
       });
-      if (preview) preview.setSequence(r.placedSequence, `${base.name} — ${r.manualScenarioLabel}`);
       renderResults([
         {
           name: `${base.name} — ${r.manualScenarioLabel}`,
           seed: "manual",
           shareCode: r.shareCode,
           details: summarizeResult(r),
-          placedSequence: r.placedSequence,
         },
       ]);
       setStatus("Manual mini-track generated", "good");
@@ -272,11 +245,9 @@ async function generateBatch() {
         seed,
         shareCode: r.shareCode,
         details: summarizeResult(r),
-        placedSequence: r.placedSequence,
       });
     }
 
-    if (preview && results[0]?.placedSequence?.length) preview.setSequence(results[0].placedSequence, results[0].name);
     renderResults(results);
     const suffix = batch !== requestedBatch ? ` (batch capped at ${batchMax} for performance)` : "";
     setStatus(`${results.length} track(s) generated${suffix}`, "good");

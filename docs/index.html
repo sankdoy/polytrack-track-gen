@@ -39,12 +39,6 @@
         --good: #2e9e77;
         --bad: #d95454;
 
-        /* preview theme */
-        --previewBgTop: rgba(112, 214, 255, 0.22);
-        --previewBgBottom: rgba(181, 234, 215, 0.22);
-        --previewGrid: rgba(27, 36, 51, 0.18);
-        --previewInk: rgba(27, 36, 51, 0.24);
-        --previewInkSoft: rgba(27, 36, 51, 0.14);
       }
 
       html[data-theme="dark"] {
@@ -69,11 +63,6 @@
         --border: rgba(231, 236, 255, 0.10);
         --shadow: 0 16px 60px rgba(0, 0, 0, 0.35);
 
-        --previewBgTop: rgba(112, 214, 255, 0.10);
-        --previewBgBottom: rgba(232, 180, 240, 0.10);
-        --previewGrid: rgba(231, 236, 255, 0.10);
-        --previewInk: rgba(231, 236, 255, 0.18);
-        --previewInkSoft: rgba(231, 236, 255, 0.10);
       }
 
       * { box-sizing: border-box; margin: 0; }
@@ -181,17 +170,17 @@
       }
 
       main {
-        max-width: 1320px;
-        margin: 18px auto 44px;
+        max-width: 1180px;
+        margin: 16px auto 36px;
         padding: 0 16px;
       }
 
       .layout {
         display: grid;
-        grid-template-columns: minmax(260px, 320px) 1fr minmax(260px, 320px);
+        grid-template-columns: minmax(320px, 420px) 1fr;
         grid-template-areas:
-          "left preview right"
-          "bottom bottom bottom";
+          "left right"
+          "bottom bottom";
         gap: 16px;
         align-items: start;
       }
@@ -200,7 +189,6 @@
         .layout {
           grid-template-columns: 1fr;
           grid-template-areas:
-            "preview"
             "left"
             "right"
             "bottom";
@@ -234,7 +222,6 @@
 
       .left { grid-area: left; }
       .right { grid-area: right; }
-      .preview { grid-area: preview; padding: 14px; }
       .bottom { grid-area: bottom; }
 
       .panel h2 {
@@ -371,25 +358,6 @@
       .status.bad { color: var(--bad); }
       .status.good { color: var(--good); }
 
-      .previewCanvasWrap {
-        width: 100%;
-        border-radius: 16px;
-        border: 1px solid var(--stroke10);
-        background: linear-gradient(180deg, color-mix(in oklab, var(--accentC) 20%, transparent), color-mix(in oklab, var(--accentA) 18%, transparent));
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
-        overflow: hidden;
-        aspect-ratio: 16 / 10;
-      }
-
-      canvas#previewCanvas { width: 100%; height: 100%; display: block; }
-
-      .hint {
-        margin-top: 10px;
-        color: var(--muted2);
-        font-size: 0.78rem;
-        font-weight: 700;
-      }
-
       details {
         border: 1px solid var(--stroke10);
         border-radius: 16px;
@@ -474,7 +442,7 @@
       <div class="topbar-inner">
         <div class="brand">
           <h1>PolyTrack Generator</h1>
-          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.24</span>
+          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.25</span>
         </div>
         <div class="top-actions">
           <button class="chiplink" id="themeToggle" type="button" aria-pressed="false" title="Toggle dark mode">
@@ -527,20 +495,6 @@
 
           <button class="btn" id="generateBtn" type="button">Generate</button>
           <div class="status" id="status"></div>
-        </section>
-
-        <section class="panel preview" aria-label="Live preview">
-          <div class="panel-head">
-            <h2>Live 3D Preview</h2>
-            <div class="row" style="flex:0; gap:8px;">
-              <button class="btn btn-secondary btn-small" id="previewReset" type="button">Reset</button>
-              <button class="btn btn-secondary btn-small" id="previewAuto" type="button">Auto</button>
-            </div>
-          </div>
-          <div class="previewCanvasWrap">
-            <canvas id="previewCanvas" width="960" height="600"></canvas>
-          </div>
-          <div class="hint">Drag to orbit • Scroll to zoom • Click a result → Preview</div>
         </section>
 
         <section class="panel right" aria-label="Parameters">
@@ -638,6 +592,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-11.24"></script>
+    <script type="module" src="./app.mjs?v=2026-02-11.25"></script>
   </body>
 </html>
