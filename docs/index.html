@@ -51,11 +51,11 @@
 
       body {
         font-family: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background:
-          radial-gradient(900px 700px at 12% 0%, rgba(210, 234, 241, 0.90), rgba(210, 234, 241, 0) 60%),
-          radial-gradient(900px 700px at 92% 0%, rgba(253, 211, 101, 0.26), rgba(253, 211, 101, 0) 60%),
-          radial-gradient(900px 700px at 60% 110%, rgba(196, 84, 60, 0.12), rgba(196, 84, 60, 0) 60%),
-          linear-gradient(180deg, var(--bg0), var(--bg1));
+        background-color: var(--bg0);
+        /* Blocky low-poly accent pattern (flat fills; no smooth gradients). */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Cpolygon points='0,0 140,0 0,110' fill='%23fdd365' fill-opacity='.28'/%3E%3Cpolygon points='140,0 260,0 320,70 190,90' fill='%23d4c3ac' fill-opacity='.30'/%3E%3Cpolygon points='0,110 110,70 190,140 40,200 0,200' fill='%23d2eaf1' fill-opacity='.55'/%3E%3Cpolygon points='190,90 320,70 320,200 210,200 160,150' fill='%23c4543c' fill-opacity='.16'/%3E%3Cpolygon points='110,70 190,10 260,80 190,140' fill='%23867e32' fill-opacity='.14'/%3E%3C/svg%3E");
+        background-size: 320px 200px;
+        background-repeat: repeat;
         color: var(--text);
         line-height: 1.5;
         min-height: 100vh;
@@ -148,7 +148,7 @@
 
       .support {
         border-color: var(--stroke10);
-        background: linear-gradient(135deg, rgba(253, 211, 101, 0.38), rgba(196, 84, 60, 0.22));
+        background: rgba(253, 211, 101, 0.42);
       }
 
       main {
@@ -193,10 +193,10 @@
         position: absolute;
         inset: 0;
         pointer-events: none;
-        background:
-          radial-gradient(320px 240px at 12% 0%, rgba(210, 234, 241, 0.55), rgba(210, 234, 241, 0) 60%),
-          radial-gradient(320px 240px at 92% 20%, rgba(253, 211, 101, 0.22), rgba(253, 211, 101, 0) 60%),
-          radial-gradient(380px 280px at 60% 120%, rgba(212, 195, 172, 0.32), rgba(212, 195, 172, 0) 60%);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='320' viewBox='0 0 480 320'%3E%3Cpolygon points='0,0 190,0 0,150' fill='%23d2eaf1' fill-opacity='.22'/%3E%3Cpolygon points='190,0 340,0 480,120 260,150' fill='%23fdd365' fill-opacity='.18'/%3E%3Cpolygon points='0,150 160,90 260,200 80,320 0,320' fill='%23d4c3ac' fill-opacity='.20'/%3E%3Cpolygon points='260,150 480,120 480,320 320,320 220,220' fill='%23c4543c' fill-opacity='.10'/%3E%3Cpolygon points='160,90 260,20 340,120 260,200' fill='%23867e32' fill-opacity='.10'/%3E%3C/svg%3E");
+        background-size: 480px 320px;
+        background-repeat: no-repeat;
+        background-position: center;
         opacity: 0.9;
       }
 
@@ -263,7 +263,7 @@
         height: 4px;
         -webkit-appearance: none;
         appearance: none;
-        background: linear-gradient(90deg, var(--freesia), var(--serenity), var(--tiger));
+        background: rgba(212, 195, 172, 0.70);
         border-radius: 2px;
         outline: none;
       }
@@ -273,7 +273,7 @@
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, var(--cream), var(--sand) 42%, var(--freesia));
+        background: var(--freesia);
         cursor: pointer;
         border: 1px solid rgba(126, 119, 104, 0.34);
         box-shadow: 0 8px 20px rgba(50, 53, 48, 0.18);
@@ -298,7 +298,7 @@
         padding: 10px 14px;
         border-radius: 999px;
         border: 1px solid var(--stroke12);
-        background: linear-gradient(135deg, var(--freesia), rgba(253, 211, 101, 0.62));
+        background: var(--freesia);
         color: var(--ink92);
         font-size: 0.86rem;
         font-weight: 900;
@@ -306,6 +306,7 @@
         transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
         box-shadow: 0 14px 40px rgba(50, 53, 48, 0.18);
       }
+      .btn:hover { background: rgba(134, 126, 50, 0.20); }
 
       .btn:hover { transform: translateY(-1px) scale(1.01); filter: saturate(1.1); }
       .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -361,7 +362,7 @@
       summary::-webkit-details-marker { display: none; }
 
       details[open] summary {
-        background: linear-gradient(135deg, rgba(253, 211, 101, 0.28), rgba(210, 234, 241, 0.34));
+        background: rgba(253, 211, 101, 0.22);
       }
 
       .accordionBody { padding: 12px 12px 2px; }
@@ -424,7 +425,7 @@
       <div class="topbar-inner">
         <div class="brand">
           <h1>PolyTrack Generator</h1>
-          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.26</span>
+          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.27</span>
         </div>
         <div class="top-actions">
           <a class="chiplink support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
@@ -568,6 +569,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-11.26"></script>
+    <script type="module" src="./app.mjs?v=2026-02-11.27"></script>
   </body>
 </html>
