@@ -114,7 +114,7 @@ class TrackPart {
   }
 }
 
-class TrackData {
+export class TrackData {
   constructor(environment, colorRepresentation) {
     this.environment = environment;
     this.colorRepresentation = colorRepresentation;
@@ -1049,67 +1049,99 @@ export function generateTrack(params = {}) {
   };
 
   // ---- Jump placement ----
-  // Calibrated from real tracks: gap = runupTiles + 3
-  // (runupTiles = flat straights after CP; CP adds 1 tile of acceleration, total flat = runup+1, gap = total+2)
-  // Jump sequence: CP → runup straights → SlopeUpLong (takeoff) → gap (empty) → SlopeDown + AltDown (landing)
+  // Jump sequence: runup straights → SlopeUpLong (takeoff) → gap → SlopeDown + AltDown (landing)
+  // Gap calibrated via sqrt model from 8 in-game data points (sub-tile world-unit precision):
+  //   gap_wu = round(13.81 * sqrt(totalFlat) - 2.51)
+  // where totalFlat = effective flat tiles of acceleration (including Start).
+  const estimatePreSpeed = () => {
+    // Walk backward through placed pieces to estimate equivalent flat tiles of speed.
+    let effectiveTiles = 0;
+    for (let j = placedSequence.length - 1; j >= 0; j--) {
+      const bt = placedSequence[j].blockType;
+      if (bt === BlockType.Straight || bt === BlockType.Checkpoint) {
+        effectiveTiles++;
+      } else if (bt === BlockType.SlopeDown || bt === BlockType.SlopeDownLong) {
+        effectiveTiles += 2; // downhill boosts speed
+      } else if (bt === BlockType.SlopeUp || bt === BlockType.SlopeUpLong) {
+        effectiveTiles = Math.max(0, effectiveTiles - 2);
+        break;
+      } else if (bt === BlockType.TurnSharp || bt === BlockType.TurnShort || bt === BlockType.TurnLong3) {
+        effectiveTiles = Math.max(effectiveTiles, 3); // turns retain some speed
+        break;
+      } else if (bt === BlockType.Start) {
+        effectiveTiles++; // Start counts as a flat tile
+        break;
+      } else {
+        break;
+      }
+    }
+    return effectiveTiles;
+  };
+
+  // Unit direction vector for heading (±1 per world unit, not per tile)
+  const headingSign = (h) => ({
+    dx: HEADING_DELTA[h].dx / TILE,
+    dz: HEADING_DELTA[h].dz / TILE,
+  });
+
   const placeJump = () => {
-    const runup = 4 + Math.floor(rng() * 5); // 4-8 straight tiles
-    const gap = runup + 3; // calibrated gap distance
+    const runup = 3 + Math.floor(rng() * 4); // 3-6 straight tiles (own runup)
+    const preSpeed = estimatePreSpeed();
+    const totalFlat = preSpeed + runup;
+    if (totalFlat < 4) return 0; // not enough speed for any jump
+    // Sqrt gap model: gap in world units, sub-tile precision
+    const gapWU = Math.max(16, Math.round(13.81 * Math.sqrt(totalFlat) - 2.51));
+    const gapCells = Math.ceil(gapWU / TILE); // grid cells to reserve for flight corridor
     const baseY = y;
     const flightY = baseY + 2;
     if (flightY > maxHeightY) return 0;
 
+    const hs = headingSign(heading);
+
     // Pre-check all positions along the jump path
     let cx = x, cz = z;
 
-    // 1. Checkpoint
-    if (!canReserveAt(cx, cz, baseY, baseY)) return 0;
-    cx += HEADING_DELTA[heading].dx;
-    cz += HEADING_DELTA[heading].dz;
-
-    // 2. Runup straights
+    // 1. Runup straights (grid-aligned)
     for (let i = 0; i < runup; i++) {
       if (!canReserveAt(cx, cz, baseY, baseY)) return 0;
       cx += HEADING_DELTA[heading].dx;
       cz += HEADING_DELTA[heading].dz;
     }
 
-    // 3. SlopeUpLong takeoff (2 tiles, occupies baseY to flightY)
+    // 2. SlopeUpLong takeoff (2 tiles, occupies baseY to flightY)
     for (let t = 0; t < 2; t++) {
       const tx = cx + HEADING_DELTA[heading].dx * t;
       const tz = cz + HEADING_DELTA[heading].dz * t;
       if (!canReserveAt(tx, tz, baseY, flightY)) return 0;
     }
-    cx += HEADING_DELTA[heading].dx * 2;
-    cz += HEADING_DELTA[heading].dz * 2;
+    const rampExitX = cx + HEADING_DELTA[heading].dx * 2;
+    const rampExitZ = cz + HEADING_DELTA[heading].dz * 2;
+    cx = rampExitX;
+    cz = rampExitZ;
 
-    // 4. Gap tiles (flight corridor: reserve baseY+1 to flightY)
-    for (let i = 0; i < gap; i++) {
+    // 3. Gap corridor (grid-aligned cells covering the flight path)
+    for (let i = 0; i < gapCells; i++) {
       if (!canReserveAt(cx, cz, baseY + 1, flightY)) return 0;
       cx += HEADING_DELTA[heading].dx;
       cz += HEADING_DELTA[heading].dz;
     }
 
-    // 5. SlopeDown landing (occupies baseY+1 to flightY)
-    if (!canReserveAt(cx, cz, baseY + 1, flightY)) return 0;
-    cx += HEADING_DELTA[heading].dx;
-    cz += HEADING_DELTA[heading].dz;
+    // 4. SlopeDown landing at exact world-unit position
+    const landX = rampExitX + hs.dx * gapWU;
+    const landZ = rampExitZ + hs.dz * gapWU;
+    if (!canReserveAt(landX, landZ, baseY + 1, flightY)) return 0;
 
-    // 6. AltDown (occupies baseY to baseY+1)
-    if (!canReserveAt(cx, cz, baseY, baseY + 1)) return 0;
-    cx += HEADING_DELTA[heading].dx;
-    cz += HEADING_DELTA[heading].dz;
+    // 5. AltDown (1 tile after landing)
+    const altX = landX + HEADING_DELTA[heading].dx;
+    const altZ = landZ + HEADING_DELTA[heading].dz;
+    if (!canReserveAt(altX, altZ, baseY, baseY + 1)) return 0;
 
-    // 7. Exit cell must be free
-    if (!isFree(cx, baseY, cz)) return 0;
+    // 6. Exit cell must be free
+    const exitX = altX + HEADING_DELTA[heading].dx;
+    const exitZ = altZ + HEADING_DELTA[heading].dz;
+    if (!isFree(exitX, baseY, exitZ)) return 0;
 
     // --- All clear, place the jump ---
-
-    // Checkpoint
-    placePiece(BlockType.Checkpoint, heading, checkpointsPlaced, null, flatFootprint);
-    checkpointsPlaced++;
-    x += HEADING_DELTA[heading].dx;
-    z += HEADING_DELTA[heading].dz;
 
     // Runup straights
     for (let i = 0; i < runup; i++) {
@@ -1125,30 +1157,27 @@ export function generateTrack(params = {}) {
     z += HEADING_DELTA[heading].dz * 2;
     y = flightY;
 
-    // Gap: reserve flight corridor, no pieces placed
-    for (let i = 0; i < gap; i++) {
-      reserveAt(x, z, baseY + 1, flightY, null);
-      x += HEADING_DELTA[heading].dx;
-      z += HEADING_DELTA[heading].dz;
+    // Gap: reserve flight corridor at grid-aligned cells
+    for (let i = 0; i < gapCells; i++) {
+      reserveAt(x + HEADING_DELTA[heading].dx * i, z + HEADING_DELTA[heading].dz * i, baseY + 1, flightY, null);
     }
 
-    // SlopeDown landing (stored at exit Y = y-1)
+    // SlopeDown landing at exact world-unit position
     const downFp = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
-    placePieceAt(x, y - 1, z, BlockType.SlopeDown, heading, null, null, downFp);
-    x += HEADING_DELTA[heading].dx;
-    z += HEADING_DELTA[heading].dz;
-    y -= 1;
+    placePieceAt(landX, flightY - 1, landZ, BlockType.SlopeDown, heading, null, null, downFp);
 
     // AltDown: SlopeUp with rotation+2, stored at lower Y
     const altDownFp = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
-    placePieceAt(x, y - 1, z, BlockType.SlopeUp, (heading + 2) % 4, null, null, altDownFp);
-    x += HEADING_DELTA[heading].dx;
-    z += HEADING_DELTA[heading].dz;
-    y -= 1;
+    placePieceAt(altX, baseY + 1 - 1, altZ, BlockType.SlopeUp, (heading + 2) % 4, null, null, altDownFp);
+
+    // Cursor ends 1 tile after AltDown at ground level
+    x = exitX;
+    z = exitZ;
+    y = baseY;
 
     resetSlopeChain();
-    // Return number of placed pieces: CP(1) + runup + SlopeUpLong(1) + SlopeDown(1) + AltDown(1) = runup + 4
-    return runup + 4;
+    // Return number of placed pieces: runup + SlopeUpLong(1) + SlopeDown(1) + AltDown(1) = runup + 3
+    return runup + 3;
   };
 
   // Weighted turn type selection
