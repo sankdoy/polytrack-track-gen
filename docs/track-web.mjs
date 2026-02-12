@@ -276,12 +276,14 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 export const manualMiniTrackScenarios = [
   // Jump calibration probes.
   // Convention: first piece after Start is a Checkpoint so you can respawn and treat it as a "fresh start".
-  { id: "jump1", label: "Jump 1: CP → runup×6 → upLong → GAP×1 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 1 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
-  { id: "jump2", label: "Jump 2: CP → runup×4 → upLong → GAP×2 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 4 }, { kind: "up", long: true }, { kind: "gap", tiles: 2 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
-  { id: "jump3", label: "Jump 3: CP → runup×8 → upLong → GAP×3 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 3 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
-  { id: "jump4", label: "Jump 4: CP → runup×12 → upLong → GAP×4 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 12 }, { kind: "up", long: true }, { kind: "gap", tiles: 4 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
-  { id: "jump5", label: "Jump 5: CP → high drop runup → upLong → GAP×3 → downLong", steps: [{ kind: "checkpoint" }, { kind: "up", long: true }, { kind: "up", long: true }, { kind: "straight", n: 2 }, { kind: "down", long: true }, { kind: "down", long: true }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 3 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
-  { id: "jumpCourse", label: "Jump Course: 3 jumps with checkpoints", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 1 }, { kind: "down", long: true }, { kind: "straight", n: 4 }, { kind: "checkpoint" }, { kind: "straight", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 2 }, { kind: "down", long: true }, { kind: "straight", n: 4 }, { kind: "checkpoint" }, { kind: "straight", n: 10 }, { kind: "up", long: true }, { kind: "gap", tiles: 3 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
+  // Note: jump1 is calibrated from your "full throttle lands here" fix:
+  // takeoff = UpLong, flight = GAP×9 at y=2, landing = Down + AltDown (two-tile smooth descent).
+  { id: "jump1", label: "Jump 1 (cal): CP → runup×6 → upLong → GAP×9 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 9 }, { kind: "down" }, { kind: "altDown" }] },
+  { id: "jump2", label: "Jump 2: CP → runup×6 → upLong → GAP×8 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 8 }, { kind: "down" }, { kind: "altDown" }] },
+  { id: "jump3", label: "Jump 3: CP → runup×6 → upLong → GAP×10 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 10 }, { kind: "down" }, { kind: "altDown" }] },
+  { id: "jump4", label: "Jump 4: CP → runup×4 → upLong → GAP×7 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 4 }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }] },
+  { id: "jump5", label: "Jump 5: CP → runup×8 → upLong → GAP×11 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 11 }, { kind: "down" }, { kind: "altDown" }] },
+  { id: "jumpDrop", label: "Jump Drop: CP → upLong×2 → downLong×2 → runup×6 → upLong → GAP×9 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "up", long: true }, { kind: "up", long: true }, { kind: "down", long: true }, { kind: "down", long: true }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 9 }, { kind: "down" }, { kind: "altDown" }] },
 ];
 
 function getScenario(id) {
