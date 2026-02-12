@@ -274,13 +274,16 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 // ---- Manual mini-tracks (for debugging alignment) ----
 
 export const manualMiniTrackScenarios = [
-  // Ramp calibration probes (we're focusing on slope anchoring + rotation).
-  // Note: total pieces = (steps.length + Start + Finish). Aim for 6–10 total.
-  { id: "ramp1", label: "ramp1 (up → flat×2 → down)", steps: [{ kind: "up" }, { kind: "straight" }, { kind: "straight" }, { kind: "down" }, { kind: "straight" }] }, // 7 pieces
-  { id: "ramp2", label: "ramp2 (upLong → flat×2 → downLong)", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 7 pieces
-  { id: "ramp3", label: "ramp3 (smooth +2: up → up → flat×2 → down → down)", steps: [{ kind: "up" }, { kind: "up" }, { kind: "straight" }, { kind: "straight" }, { kind: "down" }, { kind: "down" }, { kind: "straight" }] }, // 9 pieces
-  { id: "mix1", label: "mix1 (upLong → up → down → downLong)", steps: [{ kind: "up", long: true }, { kind: "up" }, { kind: "straight" }, { kind: "down" }, { kind: "down", long: true }, { kind: "straight" }] }, // 8 pieces
-  { id: "mix2", label: "mix2 (turn → ramps → turn)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }] }, // 8 pieces
+  // Ramp calibration probes (focus: slope anchoring + rotation + ramp/turn transitions).
+  // Note: total pieces = (steps.length + Start + Finish). Aim for 7–10 total.
+  { id: "track1", label: "Track 1: upLong → flat×2 → downLong", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 7 pieces
+  { id: "track2", label: "Track 2: altUpLong → flat×2 → downLong", steps: [{ kind: "altUpLong" }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 7 pieces
+  { id: "track3", label: "Track 3: TurnSharp(R) → upLong → downLong → TurnSharp(L)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }] }, // 8 pieces
+  { id: "track4", label: "Track 4: TurnSharp(R) → altUpLong → downLong → TurnSharp(L)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "altUpLong" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }] }, // 8 pieces
+  { id: "track5", label: "Track 5: TurnShort(R) → upLong → downLong → TurnShort(L)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
+  { id: "track6", label: "Track 6: TurnShort(R) → altUpLong → downLong → TurnShort(L)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "altUpLong" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
+  { id: "track7", label: "Track 7: smooth +2 (Up → AltUp → flat×2 → Down → AltDown)", steps: [{ kind: "up" }, { kind: "altUp" }, { kind: "straight" }, { kind: "straight" }, { kind: "down" }, { kind: "altDown" }, { kind: "straight" }] }, // 9 pieces
+  { id: "track8", label: "Track 8: upLong → AltUp → flat → Down → AltDownLong", steps: [{ kind: "up", long: true }, { kind: "altUp" }, { kind: "straight" }, { kind: "down" }, { kind: "altDownLong" }, { kind: "straight" }] }, // 8 pieces
 ];
 
 function getScenario(id) {
@@ -291,7 +294,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "ramp1",
+    scenarioId = "track1",
     name = "Manual Mini Track",
     environment = "Summer",
     format = "polytrack1",
@@ -361,15 +364,36 @@ export function generateManualMiniTrack(params = {}) {
       continue;
     }
 
+    if (step.kind === "altUp") {
+      // Smooth-seam variant for a +1 ramp segment: use SlopeDown with rotation flipped.
+      add(BlockType.SlopeDown, (heading + 2) % 4);
+      move(heading, 1);
+      y += 1;
+      assertGrid();
+      anchorTrace.push({ label: "AltUp(SlopeDown rot+2)", ...before, rotation: (before.heading + 2) % 4, after: { x, y, z, heading } });
+      continue;
+    }
+
+    if (step.kind === "altUpLong") {
+      // Alternative smooth +2 ramp used in some fixed tracks: place SlopeDownLong with rotation flipped.
+      add(BlockType.SlopeDownLong, (heading + 2) % 4);
+      move(heading, 2);
+      y += 2;
+      assertGrid();
+      anchorTrace.push({ label: "AltUpLong(SlopeDownLong rot+2)", ...before, rotation: (before.heading + 2) % 4, after: { x, y, z, heading } });
+      continue;
+    }
+
     if (step.kind === "down") {
       const tiles = step.long ? 2 : 1;
       // PolyTrack14 semantics (calibrated via in-game fixes): Long slopes span 2 tiles and change height by 2.
       const dy = Number.isFinite(step.dy) ? step.dy : (step.long ? 2 : 1);
 
       const entranceX = before.x, entranceY = before.y, entranceZ = before.z;
-      const anchorX = entranceX;
+      // Empirical: SlopeDownLong is stored 1 tile forward (in XZ) from the entrance.
+      const anchorX = entranceX + (step.long ? HEADING_DELTA[before.heading].dx : 0);
       const anchorY = entranceY - dy; // slope-down pieces store at the lower (exit) height
-      const anchorZ = entranceZ;
+      const anchorZ = entranceZ + (step.long ? HEADING_DELTA[before.heading].dz : 0);
       const storedRotation = before.heading; // store travel direction
 
       addAt(anchorX, anchorY, anchorZ, step.long ? BlockType.SlopeDownLong : BlockType.SlopeDown, storedRotation);
@@ -381,6 +405,58 @@ export function generateManualMiniTrack(params = {}) {
       assertGrid();
       anchorTrace.push({
         label: `${step.long ? "SlopeDownLong" : "SlopeDown"} storedAtLowerY`,
+        ...before,
+        rotation: storedRotation,
+        anchor: { x: anchorX, y: anchorY, z: anchorZ },
+        after: { x, y, z, heading },
+      });
+      continue;
+    }
+
+    if (step.kind === "altDown") {
+      // Smooth-seam variant for a -1 ramp segment: use SlopeUp with rotation flipped, stored at the lower Y.
+      const entranceX = before.x, entranceY = before.y, entranceZ = before.z;
+      if (entranceY < 1) throw new Error("altDown would go below ground");
+      const anchorX = entranceX;
+      const anchorY = entranceY - 1;
+      const anchorZ = entranceZ;
+      const storedRotation = (before.heading + 2) % 4;
+
+      addAt(anchorX, anchorY, anchorZ, BlockType.SlopeUp, storedRotation);
+
+      // Cursor advances from the entrance; height decreases by 1.
+      x = entranceX; y = entranceY; z = entranceZ;
+      move(heading, 1);
+      y -= 1;
+      assertGrid();
+      anchorTrace.push({
+        label: "AltDown(SlopeUp rot+2) storedAtLowerY",
+        ...before,
+        rotation: storedRotation,
+        anchor: { x: anchorX, y: anchorY, z: anchorZ },
+        after: { x, y, z, heading },
+      });
+      continue;
+    }
+
+    if (step.kind === "altDownLong") {
+      // Smooth-seam variant for a -2 ramp segment: use SlopeUpLong with rotation flipped, stored like a downLong.
+      const entranceX = before.x, entranceY = before.y, entranceZ = before.z;
+      if (entranceY < 2) throw new Error("altDownLong would go below ground");
+      const anchorX = entranceX + HEADING_DELTA[before.heading].dx;
+      const anchorY = entranceY - 2;
+      const anchorZ = entranceZ + HEADING_DELTA[before.heading].dz;
+      const storedRotation = (before.heading + 2) % 4;
+
+      addAt(anchorX, anchorY, anchorZ, BlockType.SlopeUpLong, storedRotation);
+
+      // Cursor advances from the entrance; height decreases by 2.
+      x = entranceX; y = entranceY; z = entranceZ;
+      move(heading, 2);
+      y -= 2;
+      assertGrid();
+      anchorTrace.push({
+        label: "AltDownLong(SlopeUpLong rot+2) storedAtLowerY+1tile",
         ...before,
         rotation: storedRotation,
         anchor: { x: anchorX, y: anchorY, z: anchorZ },
@@ -790,6 +866,17 @@ export function generateTrack(params = {}) {
 
   // ---- Piece placement functions ----
 
+  // Slope smoothing: alternate ramp mesh variants within a continuous climb/descent.
+  // Empirically, alternating Up/Down variants (with rotation flipped) produces smoother seams.
+  let slopeChainDir = null; // "up" | "down" | null
+  let slopeChainIndex = -1;
+  const resetSlopeChain = () => { slopeChainDir = null; slopeChainIndex = -1; };
+  const nextSlopeAlt = (dir) => slopeChainDir === dir && (((slopeChainIndex + 1) % 2) === 1);
+  const commitSlope = (dir) => {
+    if (slopeChainDir === dir) slopeChainIndex++;
+    else { slopeChainDir = dir; slopeChainIndex = 0; }
+  };
+
   const exitFreeOrIntersect = (ex, ey, ez, h, allowIntersectionEntry) =>
     isFree(ex, ey, ez) || (allowIntersectionEntry && canExitIntoIntersection(ex, ey, ez, h));
 
@@ -800,6 +887,7 @@ export function generateTrack(params = {}) {
     if (!exitFreeOrIntersect(exit.x, exit.y, exit.z, heading, true)) return false;
     placePiece(blockType, heading, cpOrder ?? null, null, fp);
     x = exit.x; y = exit.y; z = exit.z;
+    resetSlopeChain();
     return true;
   };
 
@@ -815,8 +903,14 @@ export function generateTrack(params = {}) {
     const exit = nextPos(x, y, z, heading, exitTiles);
     if (!canFootprint(x, y, z, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    placePiece(longVariant ? BlockType.SlopeUpLong : BlockType.SlopeUp, heading, null, null, fp);
+    const alt = nextSlopeAlt("up");
+    const blockType = longVariant
+      ? (alt ? BlockType.SlopeDownLong : BlockType.SlopeUpLong)
+      : (alt ? BlockType.SlopeDown : BlockType.SlopeUp);
+    const storedRotation = alt ? ((heading + 2) % 4) : heading;
+    placePiece(blockType, storedRotation, null, null, fp);
     x = exit.x; y = nextY; z = exit.z;
+    commitSlope("up");
     return true;
   };
 
@@ -826,17 +920,27 @@ export function generateTrack(params = {}) {
     const dy = longVariant ? 2 : 1;
     if (y < dy) return false;
     const nextY = y - dy;
+    const alt = nextSlopeAlt("down");
     // Empirical: slope-down blocks store their Y at the lower (exit) height.
-    // (x,z) still reference the entrance cell; reserve vertical span [0..dy] from the stored Y.
-    const anchorX = x, anchorY = nextY, anchorZ = z;
-    const storedRotation = heading; // store travel direction
+    // (x,z) reference:
+    // - SlopeDown: entrance cell
+    // - SlopeDownLong: 1 tile forward from the entrance
+    // Reserve vertical span [0..dy] from the stored Y.
+    const anchorX = x + (longVariant ? HEADING_DELTA[heading].dx : 0);
+    const anchorY = nextY;
+    const anchorZ = z + (longVariant ? HEADING_DELTA[heading].dz : 0);
+    const storedRotation = alt ? ((heading + 2) % 4) : heading; // store travel direction (or alt seam variant)
     // Over-approx vertical span for collision: occupies [0..dy] across its forward footprint.
     const fp = forwardFootprint(heading, footprintTiles, 0, dy);
     const exit = nextPos(x, nextY, z, heading, footprintTiles);
     if (!canFootprint(anchorX, anchorY, anchorZ, fp)) return false;
     if (!exitFreeOrIntersect(exit.x, nextY, exit.z, heading, false)) return false;
-    placePieceAt(anchorX, anchorY, anchorZ, longVariant ? BlockType.SlopeDownLong : BlockType.SlopeDown, storedRotation, null, null, fp);
+    const blockType = longVariant
+      ? (alt ? BlockType.SlopeUpLong : BlockType.SlopeDownLong)
+      : (alt ? BlockType.SlopeUp : BlockType.SlopeDown);
+    placePieceAt(anchorX, anchorY, anchorZ, blockType, storedRotation, null, null, fp);
     x = exit.x; y = nextY; z = exit.z;
+    commitSlope("down");
     return true;
   };
 
@@ -913,6 +1017,7 @@ export function generateTrack(params = {}) {
     placePieceAt(anchorX, y, anchorZ, blockType, turnRotation, null, null, fp);
     heading = newHeading;
     x = exit.x; y = exit.y; z = exit.z;
+    resetSlopeChain();
     return true;
   };
 
