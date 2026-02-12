@@ -284,6 +284,11 @@ export const manualMiniTrackScenarios = [
   { id: "jump4", label: "Jump 4: CP → runup×4 → upLong → GAP×7 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 4 }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }] },
   { id: "jump5", label: "Jump 5: CP → runup×8 → upLong → GAP×11 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 11 }, { kind: "down" }, { kind: "altDown" }] },
   { id: "jumpDrop", label: "Jump Drop: CP → upLong×2 → downLong×2 → runup×6 → upLong → GAP×9 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "up", long: true }, { kind: "up", long: true }, { kind: "down", long: true }, { kind: "down", long: true }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 9 }, { kind: "down" }, { kind: "altDown" }] },
+
+  // TurnShort probes (for the misalignment you're seeing on the 2x2 right-angle corners).
+  { id: "turnShortR", label: "TurnShort R: CP → straight×2 → TurnShort(R) → straight×6", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 6 }] },
+  { id: "turnShortL", label: "TurnShort L: CP → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
+  { id: "turnShortS", label: "TurnShort S: CP → straight×2 → TurnShort(R) → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
 ];
 
 function getScenario(id) {
@@ -547,6 +552,13 @@ export function generateManualMiniTrack(params = {}) {
       // Empirical: TurnShort(L) stores its anchor at the opposite corner of its 2x2 footprint:
       // shift 1 tile along the entry heading + 1 tile along the exit (new) heading.
       if (isShort && !turnRight) {
+        const shift = sizeTiles - 1; // 1 tile for the 2x2 short turn
+        anchorX += HEADING_DELTA[before.heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+        anchorZ += HEADING_DELTA[before.heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+      }
+
+      // Empirical (via in-game fixes): TurnShort(R) is also stored at the opposite corner of its 2x2 footprint.
+      if (isShort && turnRight) {
         const shift = sizeTiles - 1; // 1 tile for the 2x2 short turn
         anchorX += HEADING_DELTA[before.heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
         anchorZ += HEADING_DELTA[before.heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
@@ -984,15 +996,15 @@ export function generateTrack(params = {}) {
     return placeSlopeDown(true);
   };
 
-  const placeTurn90 = (turnRight, variant) => {
-    let newHeading, turnRotation;
-    if (turnRight) {
-      turnRotation = heading;
-      newHeading = (heading + 3) % 4;
-    } else {
-      turnRotation = (heading + 3) % 4;
-      newHeading = (heading + 1) % 4;
-    }
+	  const placeTurn90 = (turnRight, variant) => {
+	    let newHeading, turnRotation;
+	    if (turnRight) {
+	      turnRotation = heading;
+	      newHeading = (heading + 3) % 4;
+	    } else {
+	      turnRotation = (heading + 3) % 4;
+	      newHeading = (heading + 1) % 4;
+	    }
     // Turn geometry notes (empirically calibrated via in-game probes):
     // - TurnSharp: 1x1 footprint, exit is 1 tile in new heading.
     // - TurnShort: 2x2 footprint, exit is (2 tiles in new heading) + (1 tile in old heading).
@@ -1006,9 +1018,9 @@ export function generateTrack(params = {}) {
     // We model this by shifting the stored anchor to the opposite corner of the square footprint, and
     // flipping footprint directions so collisions cover the actual occupied area.
     const entranceX = x, entranceY = y, entranceZ = z;
-    let anchorX = entranceX, anchorZ = entranceZ;
-    let fpForwardHeading = heading;
-    let fpSideHeading = newHeading;
+	    let anchorX = entranceX, anchorZ = entranceZ;
+	    let fpForwardHeading = heading;
+	    let fpSideHeading = newHeading;
     if (isLong && !turnRight) {
       const shift = footprintTiles - 1; // 4 tiles for 5x5
       anchorX = entranceX + HEADING_DELTA[heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
@@ -1016,14 +1028,23 @@ export function generateTrack(params = {}) {
       fpForwardHeading = (heading + 2) % 4;
       fpSideHeading = (newHeading + 2) % 4;
     }
-    // Empirical: TurnShort(L) stores its anchor at the opposite corner of its 2x2 footprint.
-    if (isShort && !turnRight) {
-      const shift = footprintTiles - 1; // 1 tile for 2x2
-      anchorX = entranceX + HEADING_DELTA[heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
-      anchorZ = entranceZ + HEADING_DELTA[heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
-      fpForwardHeading = (heading + 2) % 4;
-      fpSideHeading = (newHeading + 2) % 4;
-    }
+	    // Empirical: TurnShort(L) stores its anchor at the opposite corner of its 2x2 footprint.
+	    if (isShort && !turnRight) {
+	      const shift = footprintTiles - 1; // 1 tile for 2x2
+	      anchorX = entranceX + HEADING_DELTA[heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+	      anchorZ = entranceZ + HEADING_DELTA[heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+	      fpForwardHeading = (heading + 2) % 4;
+	      fpSideHeading = (newHeading + 2) % 4;
+	    }
+
+	    // Empirical: TurnShort(R) is also stored at the opposite corner of its 2x2 footprint.
+	    if (isShort && turnRight) {
+	      const shift = footprintTiles - 1; // 1 tile for 2x2
+	      anchorX = entranceX + HEADING_DELTA[heading].dx * shift + HEADING_DELTA[newHeading].dx * shift;
+	      anchorZ = entranceZ + HEADING_DELTA[heading].dz * shift + HEADING_DELTA[newHeading].dz * shift;
+	      fpForwardHeading = (heading + 2) % 4;
+	      fpSideHeading = (newHeading + 2) % 4;
+	    }
 
     const fp = (isLong || isShort) ? turnSquareFootprint(fpForwardHeading, fpSideHeading, footprintTiles, 0, 0) : flatFootprint;
 
