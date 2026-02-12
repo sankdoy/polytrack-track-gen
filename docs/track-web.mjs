@@ -1193,15 +1193,15 @@ export function generateTrack(params = {}) {
     if (y >= 1) {
       if (placeSlopeDown(false)) continue;
     }
-    // Try turning to find a descent path
-    const tryH = (heading + (rng() < 0.5 ? 1 : 3)) % 4;
-    const tryExit = nextPos(x, y, z, tryH, 1);
-    if (isFree(x, y, z) && isFree(tryExit.x, tryExit.y, tryExit.z)) {
-      placeStraightLike(BlockType.Straight, null);
-      heading = tryH;
-    } else {
-      break;
+    // Try turning to find a descent path (must place a turn piece; never change heading "for free").
+    const preferRight = rng() < 0.5;
+    const turnDirs = preferRight ? [true, false] : [false, true];
+    let turned = false;
+    for (const turnRight of turnDirs) {
+      if (placeTurn90(turnRight, "sharp")) { turned = true; break; }
     }
+    if (turned) continue;
+    break;
   }
 
   // ---- Ensure all checkpoints are placed before finish ----
