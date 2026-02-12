@@ -6,63 +6,44 @@
     <title>PolyTrack Generator</title>
     <style>
       :root {
-        --bg0: #fafbfd;
-        --bg1: #eef3ff;
+        /* Palette-only theme */
+        --olive: #867e32;
+        --olive2: #595421;
+        --serenity: #d2eaf1;
+        --freesia: #fdd365;
+        --taupe: #7e7768;
+        --taupe2: #88857d;
+        --ebony: #323530;
+        --cream: #e3d6ca;
+        --tiger: #c4543c;
+        --sand: #d4c3ac;
+        --cognac: #785e4c;
 
-        --text: #1b2433;
-        --muted: rgba(27, 36, 51, 0.66);
-        --muted2: rgba(27, 36, 51, 0.56);
-        --ink92: rgba(27, 36, 51, 0.92);
-        --ink86: rgba(27, 36, 51, 0.86);
-        --ink80: rgba(27, 36, 51, 0.80);
-        --ink70: rgba(27, 36, 51, 0.70);
-        --ink62: rgba(27, 36, 51, 0.62);
+        --bg0: var(--serenity);
+        --bg1: var(--cream);
 
-        --stroke10: rgba(27, 36, 51, 0.10);
-        --stroke12: rgba(27, 36, 51, 0.12);
-        --stroke14: rgba(27, 36, 51, 0.14);
+        --text: var(--ebony);
+        --muted: rgba(126, 119, 104, 0.82); /* taupe */
+        --muted2: rgba(136, 133, 125, 0.75); /* taupe2 */
+        --ink92: rgba(50, 53, 48, 0.92);
+        --ink86: rgba(50, 53, 48, 0.86);
+        --ink80: rgba(50, 53, 48, 0.80);
+        --ink70: rgba(50, 53, 48, 0.70);
+        --ink62: rgba(50, 53, 48, 0.62);
 
-        /* accents */
-        --accentA: #b5ead7;
-        --accentB: #ffd6a5;
-        --accentC: #70d6ff;
-        --accentD: #e8b4f0;
+        --stroke10: rgba(126, 119, 104, 0.22);
+        --stroke12: rgba(126, 119, 104, 0.28);
+        --stroke14: rgba(126, 119, 104, 0.34);
 
-        /* glass */
-        --panel: rgba(255, 255, 255, 0.72);
-        --panel2: rgba(255, 255, 255, 0.60);
-        --border: rgba(255, 255, 255, 0.78);
+        --panel: rgba(227, 214, 202, 0.72);  /* cream */
+        --panel2: rgba(212, 195, 172, 0.58); /* sand dollar */
+        --border: rgba(210, 234, 241, 0.60); /* serenity */
 
-        --shadow: 0 10px 30px rgba(34, 48, 68, 0.10);
+        --shadow: 0 12px 40px rgba(50, 53, 48, 0.16);
         --radius: 18px;
 
-        --good: #2e9e77;
-        --bad: #d95454;
-
-      }
-
-      html[data-theme="dark"] {
-        --bg0: #0f1320;
-        --bg1: #111a2a;
-
-        --text: #e7ecff;
-        --muted: rgba(231, 236, 255, 0.68);
-        --muted2: rgba(231, 236, 255, 0.56);
-        --ink92: rgba(231, 236, 255, 0.92);
-        --ink86: rgba(231, 236, 255, 0.86);
-        --ink80: rgba(231, 236, 255, 0.80);
-        --ink70: rgba(231, 236, 255, 0.70);
-        --ink62: rgba(231, 236, 255, 0.62);
-
-        --stroke10: rgba(231, 236, 255, 0.10);
-        --stroke12: rgba(231, 236, 255, 0.12);
-        --stroke14: rgba(231, 236, 255, 0.14);
-
-        --panel: rgba(16, 20, 34, 0.62);
-        --panel2: rgba(16, 20, 34, 0.46);
-        --border: rgba(231, 236, 255, 0.10);
-        --shadow: 0 16px 60px rgba(0, 0, 0, 0.35);
-
+        --good: var(--olive2);
+        --bad: var(--tiger);
       }
 
       * { box-sizing: border-box; margin: 0; }
@@ -71,8 +52,9 @@
       body {
         font-family: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background:
-          radial-gradient(900px 700px at 15% 0%, rgba(112, 214, 255, 0.22), transparent 60%),
-          radial-gradient(900px 700px at 95% 0%, rgba(232, 180, 240, 0.14), transparent 60%),
+          radial-gradient(900px 700px at 12% 0%, rgba(210, 234, 241, 0.90), rgba(210, 234, 241, 0) 60%),
+          radial-gradient(900px 700px at 92% 0%, rgba(253, 211, 101, 0.26), rgba(253, 211, 101, 0) 60%),
+          radial-gradient(900px 700px at 60% 110%, rgba(196, 84, 60, 0.12), rgba(196, 84, 60, 0) 60%),
           linear-gradient(180deg, var(--bg0), var(--bg1));
         color: var(--text);
         line-height: 1.5;
@@ -85,7 +67,7 @@
         top: 0;
         z-index: 10;
         padding: 14px 18px;
-        background: color-mix(in oklab, var(--bg0) 76%, transparent);
+        background: rgba(227, 214, 202, 0.38);
         backdrop-filter: blur(14px) saturate(1.2);
         border-bottom: 1px solid var(--stroke10);
       }
@@ -126,7 +108,7 @@
         border-radius: 999px;
         border: 1px solid var(--stroke14);
         background: var(--panel2);
-        box-shadow: 0 8px 24px rgba(34, 48, 68, 0.06);
+        box-shadow: 0 8px 24px rgba(50, 53, 48, 0.10);
         color: var(--ink80);
         font-size: 0.75rem;
         font-weight: 700;
@@ -153,7 +135,7 @@
         border: 1px solid var(--stroke14);
         background: var(--panel2);
         backdrop-filter: blur(10px) saturate(1.2);
-        box-shadow: 0 10px 28px rgba(34, 48, 68, 0.08);
+        box-shadow: 0 10px 28px rgba(50, 53, 48, 0.12);
         text-decoration: none;
         font-size: 0.78rem;
         font-weight: 800;
@@ -161,12 +143,12 @@
       }
       button.chiplink { cursor: pointer; }
 
-      .chiplink:hover { transform: translateY(-1px); box-shadow: 0 14px 44px rgba(34, 48, 68, 0.12); }
+      .chiplink:hover { transform: translateY(-1px); box-shadow: 0 14px 44px rgba(50, 53, 48, 0.14); }
       .chiplink svg { width: 14px; height: 14px; }
 
       .support {
         border-color: var(--stroke10);
-        background: linear-gradient(135deg, color-mix(in oklab, var(--accentA) 72%, transparent), color-mix(in oklab, var(--accentB) 62%, transparent));
+        background: linear-gradient(135deg, rgba(253, 211, 101, 0.38), rgba(196, 84, 60, 0.22));
       }
 
       main {
@@ -212,9 +194,9 @@
         inset: 0;
         pointer-events: none;
         background:
-          radial-gradient(300px 220px at 16% 0%, rgba(112, 214, 255, 0.18), transparent 60%),
-          radial-gradient(280px 220px at 90% 20%, rgba(232, 180, 240, 0.16), transparent 60%),
-          radial-gradient(340px 260px at 60% 120%, rgba(181, 234, 215, 0.18), transparent 60%);
+          radial-gradient(320px 240px at 12% 0%, rgba(210, 234, 241, 0.55), rgba(210, 234, 241, 0) 60%),
+          radial-gradient(320px 240px at 92% 20%, rgba(253, 211, 101, 0.22), rgba(253, 211, 101, 0) 60%),
+          radial-gradient(380px 280px at 60% 120%, rgba(212, 195, 172, 0.32), rgba(212, 195, 172, 0) 60%);
         opacity: 0.9;
       }
 
@@ -262,7 +244,7 @@
         padding: 8px 10px;
         border-radius: 12px;
         border: 1px solid var(--stroke14);
-        background: color-mix(in oklab, var(--panel2) 72%, var(--bg0));
+        background: rgba(227, 214, 202, 0.52);
         color: var(--ink92);
         font-size: 0.86rem;
         outline: none;
@@ -272,8 +254,8 @@
       input[type="text"]:focus,
       input[type="number"]:focus,
       select:focus {
-        border-color: color-mix(in oklab, var(--accentA) 90%, transparent);
-        box-shadow: 0 0 0 4px color-mix(in oklab, var(--accentA) 35%, transparent), 0 14px 40px rgba(34, 48, 68, 0.10);
+        border-color: var(--olive);
+        box-shadow: 0 0 0 4px rgba(134, 126, 50, 0.25), 0 14px 40px rgba(50, 53, 48, 0.14);
       }
 
       input[type="range"] {
@@ -281,7 +263,7 @@
         height: 4px;
         -webkit-appearance: none;
         appearance: none;
-        background: linear-gradient(90deg, rgba(112, 214, 255, 0.65), rgba(181, 234, 215, 0.65), rgba(255, 214, 165, 0.7));
+        background: linear-gradient(90deg, var(--freesia), var(--serenity), var(--tiger));
         border-radius: 2px;
         outline: none;
       }
@@ -291,19 +273,19 @@
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.98), rgba(255,255,255,0.55) 42%, rgba(255, 214, 165, 0.92));
+        background: radial-gradient(circle at 30% 30%, var(--cream), var(--sand) 42%, var(--freesia));
         cursor: pointer;
-        border: 1px solid rgba(44, 62, 80, 0.10);
-        box-shadow: 0 8px 20px rgba(34, 48, 68, 0.12);
+        border: 1px solid rgba(126, 119, 104, 0.34);
+        box-shadow: 0 8px 20px rgba(50, 53, 48, 0.18);
       }
 
       input[type="range"]::-moz-range-thumb {
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: rgba(255, 214, 165, 0.92);
+        background: var(--freesia);
         cursor: pointer;
-        border: 1px solid rgba(44, 62, 80, 0.10);
+        border: 1px solid rgba(126, 119, 104, 0.34);
       }
 
       .row { display: flex; gap: 8px; align-items: center; }
@@ -316,13 +298,13 @@
         padding: 10px 14px;
         border-radius: 999px;
         border: 1px solid var(--stroke12);
-        background: linear-gradient(135deg, color-mix(in oklab, var(--accentA) 92%, transparent), color-mix(in oklab, var(--accentB) 92%, transparent));
+        background: linear-gradient(135deg, var(--freesia), rgba(253, 211, 101, 0.62));
         color: var(--ink92);
         font-size: 0.86rem;
         font-weight: 900;
         cursor: pointer;
         transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
-        box-shadow: 0 14px 40px rgba(34, 48, 68, 0.12);
+        box-shadow: 0 14px 40px rgba(50, 53, 48, 0.18);
       }
 
       .btn:hover { transform: translateY(-1px) scale(1.01); filter: saturate(1.1); }
@@ -332,7 +314,7 @@
         background: var(--panel2);
         color: var(--ink86);
         font-weight: 850;
-        box-shadow: 0 10px 30px rgba(34, 48, 68, 0.08);
+        box-shadow: 0 10px 30px rgba(50, 53, 48, 0.14);
       }
 
       .btn-small { padding: 7px 10px; font-size: 0.78rem; border-radius: 999px; }
@@ -350,7 +332,7 @@
       .checkbox input[type="checkbox"] {
         width: 16px;
         height: 16px;
-        accent-color: #a2d9ce;
+        accent-color: var(--olive);
         cursor: pointer;
       }
 
@@ -362,7 +344,7 @@
         border: 1px solid var(--stroke10);
         border-radius: 16px;
         background: var(--panel2);
-        box-shadow: 0 10px 30px rgba(34, 48, 68, 0.08);
+        box-shadow: 0 10px 30px rgba(50, 53, 48, 0.14);
         margin-bottom: 10px;
         overflow: hidden;
       }
@@ -379,7 +361,7 @@
       summary::-webkit-details-marker { display: none; }
 
       details[open] summary {
-        background: linear-gradient(135deg, rgba(181, 234, 215, 0.45), rgba(255, 214, 165, 0.35));
+        background: linear-gradient(135deg, rgba(253, 211, 101, 0.28), rgba(210, 234, 241, 0.34));
       }
 
       .accordionBody { padding: 12px 12px 2px; }
@@ -390,7 +372,7 @@
         border-radius: 16px;
         padding: 14px;
         margin-bottom: 10px;
-        box-shadow: 0 12px 34px rgba(34, 48, 68, 0.10);
+        box-shadow: 0 12px 34px rgba(50, 53, 48, 0.16);
       }
 
       .card-head {
@@ -406,7 +388,7 @@
 
       .code {
         font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
-        background: color-mix(in oklab, var(--panel2) 72%, var(--bg0));
+        background: rgba(212, 195, 172, 0.48);
         border: 1px solid var(--stroke12);
         border-radius: 14px;
         padding: 10px;
@@ -442,15 +424,9 @@
       <div class="topbar-inner">
         <div class="brand">
           <h1>PolyTrack Generator</h1>
-          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.25</span>
+          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-11.26</span>
         </div>
         <div class="top-actions">
-          <button class="chiplink" id="themeToggle" type="button" aria-pressed="false" title="Toggle dark mode">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M21 14.5A8.2 8.2 0 0 1 9.5 3a7.2 7.2 0 1 0 11.5 11.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-            </svg>
-            Dark
-          </button>
           <a class="chiplink support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M7 9h11v3.5a4.5 4.5 0 0 1-4.5 4.5H9.5A4.5 4.5 0 0 1 5 12.5V11a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
@@ -592,6 +568,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-11.25"></script>
+    <script type="module" src="./app.mjs?v=2026-02-11.26"></script>
   </body>
 </html>

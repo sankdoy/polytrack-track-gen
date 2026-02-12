@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.25";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-11.26";
 
 const $ = (id) => document.getElementById(id);
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
@@ -29,45 +29,7 @@ function copyText(text) {
   return navigator.clipboard.writeText(text);
 }
 
-function applyTheme(theme) {
-  const t = theme === "dark" ? "dark" : "light";
-  if (t === "dark") document.documentElement.dataset.theme = "dark";
-  else delete document.documentElement.dataset.theme;
-  try { localStorage.setItem("theme", t); } catch {}
-
-  const btn = $("themeToggle");
-  if (btn) {
-    const isDark = t === "dark";
-    const svg = btn.querySelector("svg");
-    const label = isDark ? "Light" : "Dark";
-    btn.setAttribute("aria-pressed", isDark ? "true" : "false");
-    if (svg) btn.replaceChildren(svg, document.createTextNode(" " + label));
-    else btn.textContent = label;
-  }
-}
-
-function initTheme() {
-  let t = "light";
-  try {
-    t = localStorage.getItem("theme") || "";
-  } catch {}
-  if (t !== "dark" && t !== "light") {
-    t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  applyTheme(t);
-
-  const btn = $("themeToggle");
-  if (btn) {
-    btn.addEventListener("click", () => {
-      const isDark = document.documentElement.dataset.theme === "dark";
-      applyTheme(isDark ? "light" : "dark");
-    });
-  }
-}
-
 if (hasDOM) {
-  initTheme();
-
   bindRange("length");
   bindRange("elevation");
   bindRange("curviness");
