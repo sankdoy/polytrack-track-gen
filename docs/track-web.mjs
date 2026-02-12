@@ -628,6 +628,7 @@ export function generateTrack(params = {}) {
     intersectionChance = 0.15,
     templateChance = 0.25,
     allowSteepSlopes = true,
+    jumpChance = 0.15,
     format = "polytrack1",
   } = params;
 
@@ -637,6 +638,7 @@ export function generateTrack(params = {}) {
   const elevationProb = Math.max(0, Math.min(0.8, elevation * 0.08));
   const turnProb = Math.max(0, Math.min(0.8, curviness * 0.09));
   const intersectionProb = Math.max(0, Math.min(1, intersectionChance));
+  const jumpProb = Math.max(0, Math.min(1, jumpChance));
   const templateProb = Math.max(0, Math.min(1, templateChance));
   const maxHeightY = Math.max(0, Math.floor(maxHeight));
   const attemptsPerPiece = Math.max(1, Math.floor(maxAttemptsPerPiece));
@@ -884,6 +886,8 @@ export function generateTrack(params = {}) {
     ["up", "turnR", "straight", "down"],
     ["up", "turnL", "straight", "down"],
     ["straight", "up", "straight", "turnR", "down", "straight"],
+    // Jumps (handled as compound actions)
+    ["jump"],
   ];
   const actionQueue = [];
 
@@ -1044,6 +1048,109 @@ export function generateTrack(params = {}) {
     return true;
   };
 
+  // ---- Jump placement ----
+  // Calibrated from real tracks: gap = runupTiles + 3
+  // (runupTiles = flat straights after CP; CP adds 1 tile of acceleration, total flat = runup+1, gap = total+2)
+  // Jump sequence: CP → runup straights → SlopeUpLong (takeoff) → gap (empty) → SlopeDown + AltDown (landing)
+  const placeJump = () => {
+    const runup = 4 + Math.floor(rng() * 5); // 4-8 straight tiles
+    const gap = runup + 3; // calibrated gap distance
+    const baseY = y;
+    const flightY = baseY + 2;
+    if (flightY > maxHeightY) return 0;
+
+    // Pre-check all positions along the jump path
+    let cx = x, cz = z;
+
+    // 1. Checkpoint
+    if (!canReserveAt(cx, cz, baseY, baseY)) return 0;
+    cx += HEADING_DELTA[heading].dx;
+    cz += HEADING_DELTA[heading].dz;
+
+    // 2. Runup straights
+    for (let i = 0; i < runup; i++) {
+      if (!canReserveAt(cx, cz, baseY, baseY)) return 0;
+      cx += HEADING_DELTA[heading].dx;
+      cz += HEADING_DELTA[heading].dz;
+    }
+
+    // 3. SlopeUpLong takeoff (2 tiles, occupies baseY to flightY)
+    for (let t = 0; t < 2; t++) {
+      const tx = cx + HEADING_DELTA[heading].dx * t;
+      const tz = cz + HEADING_DELTA[heading].dz * t;
+      if (!canReserveAt(tx, tz, baseY, flightY)) return 0;
+    }
+    cx += HEADING_DELTA[heading].dx * 2;
+    cz += HEADING_DELTA[heading].dz * 2;
+
+    // 4. Gap tiles (flight corridor: reserve baseY+1 to flightY)
+    for (let i = 0; i < gap; i++) {
+      if (!canReserveAt(cx, cz, baseY + 1, flightY)) return 0;
+      cx += HEADING_DELTA[heading].dx;
+      cz += HEADING_DELTA[heading].dz;
+    }
+
+    // 5. SlopeDown landing (occupies baseY+1 to flightY)
+    if (!canReserveAt(cx, cz, baseY + 1, flightY)) return 0;
+    cx += HEADING_DELTA[heading].dx;
+    cz += HEADING_DELTA[heading].dz;
+
+    // 6. AltDown (occupies baseY to baseY+1)
+    if (!canReserveAt(cx, cz, baseY, baseY + 1)) return 0;
+    cx += HEADING_DELTA[heading].dx;
+    cz += HEADING_DELTA[heading].dz;
+
+    // 7. Exit cell must be free
+    if (!isFree(cx, baseY, cz)) return 0;
+
+    // --- All clear, place the jump ---
+
+    // Checkpoint
+    placePiece(BlockType.Checkpoint, heading, checkpointsPlaced, null, flatFootprint);
+    checkpointsPlaced++;
+    x += HEADING_DELTA[heading].dx;
+    z += HEADING_DELTA[heading].dz;
+
+    // Runup straights
+    for (let i = 0; i < runup; i++) {
+      placePiece(BlockType.Straight, heading, null, null, flatFootprint);
+      x += HEADING_DELTA[heading].dx;
+      z += HEADING_DELTA[heading].dz;
+    }
+
+    // SlopeUpLong takeoff
+    const rampFp = forwardFootprint(heading, 2, 0, 2);
+    placePiece(BlockType.SlopeUpLong, heading, null, null, rampFp);
+    x += HEADING_DELTA[heading].dx * 2;
+    z += HEADING_DELTA[heading].dz * 2;
+    y = flightY;
+
+    // Gap: reserve flight corridor, no pieces placed
+    for (let i = 0; i < gap; i++) {
+      reserveAt(x, z, baseY + 1, flightY, null);
+      x += HEADING_DELTA[heading].dx;
+      z += HEADING_DELTA[heading].dz;
+    }
+
+    // SlopeDown landing (stored at exit Y = y-1)
+    const downFp = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
+    placePieceAt(x, y - 1, z, BlockType.SlopeDown, heading, null, null, downFp);
+    x += HEADING_DELTA[heading].dx;
+    z += HEADING_DELTA[heading].dz;
+    y -= 1;
+
+    // AltDown: SlopeUp with rotation+2, stored at lower Y
+    const altDownFp = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
+    placePieceAt(x, y - 1, z, BlockType.SlopeUp, (heading + 2) % 4, null, null, altDownFp);
+    x += HEADING_DELTA[heading].dx;
+    z += HEADING_DELTA[heading].dz;
+    y -= 1;
+
+    resetSlopeChain();
+    // Return number of placed pieces: CP(1) + runup + SlopeUpLong(1) + SlopeDown(1) + AltDown(1) = runup + 4
+    return runup + 4;
+  };
+
   // Weighted turn type selection
   const pickTurnVariant = () => {
     const r = rng();
@@ -1158,6 +1265,18 @@ export function generateTrack(params = {}) {
           else if (a === "down") ok = placeSlopeDown(allowSteepSlopes && rng() < 0.3);
           else if (a === "downLong") ok = allowSteepSlopes && placeSlopeDown(true);
           else if (a === "steepUp") ok = allowSteepSlopes && placeSlopeSteep();
+          else if (a === "jump") {
+            const jumpPieces = placeJump();
+            if (jumpPieces > 0) {
+              actionQueue.shift();
+              placed = true;
+              piecesPlaced += jumpPieces;
+              i += jumpPieces - 1;
+              consecutiveStraight = 0;
+              justPlacedPiece = true;
+              continue;
+            }
+          }
           if (ok) {
             actionQueue.shift();
             placed = true;
@@ -1182,6 +1301,22 @@ export function generateTrack(params = {}) {
           placed = placeSlopeUp(allowSteepSlopes && rng() < 0.3);
         }
         if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
+      }
+
+      // Jumps - only when flat, enough track budget remaining, and not descending
+      if (!placed && jumpProb > 0 && !shouldDescend && slopeChainDir === null) {
+        const piecesLeft = trackLength - i;
+        if (piecesLeft > 18 && y + 2 <= maxHeightY && piecesPlaced > 3 && rng() < jumpProb) {
+          const jumpPieces = placeJump();
+          if (jumpPieces > 0) {
+            placed = true;
+            piecesPlaced += jumpPieces;
+            i += jumpPieces - 1;
+            consecutiveStraight = 0;
+            justPlacedPiece = true;
+            continue;
+          }
+        }
       }
 
       // Turns - use bias for flowing curves

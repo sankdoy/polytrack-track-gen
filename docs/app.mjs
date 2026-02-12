@@ -38,6 +38,7 @@ if (hasDOM) {
   bindRange("maxAttemptsPerPiece");
   bindRange("intersectionChance", (v) => Number(v).toFixed(2));
   bindRange("templateChance", (v) => Number(v).toFixed(2));
+  bindRange("jumpChance", (v) => Number(v).toFixed(2));
 
   const manualScenarioEl = $("manualScenario");
   if (manualScenarioEl) {
@@ -78,6 +79,7 @@ function readParams() {
     allowIntersections: $("allowIntersections").checked,
     intersectionChance: Number($("intersectionChance").value),
     templateChance: Number($("templateChance").value),
+    jumpChance: Number($("jumpChance").value),
     format: "polytrack1",
     seed,
   };
