@@ -274,16 +274,14 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 // ---- Manual mini-tracks (for debugging alignment) ----
 
 export const manualMiniTrackScenarios = [
-  // Ramp calibration probes (focus: slope anchoring + rotation + ramp/turn transitions).
-  // Note: total pieces = (steps.length + Start + Finish). Aim for 7–10 total.
-  { id: "track1", label: "Track 1: upLong → flat×2 → downLong", steps: [{ kind: "up", long: true }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 7 pieces
-  { id: "track2", label: "Track 2: altUpLong → flat×2 → downLong", steps: [{ kind: "altUpLong" }, { kind: "straight" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "straight" }] }, // 7 pieces
-  { id: "track3", label: "Track 3: TurnSharp(R) → upLong → downLong → TurnSharp(L)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track4", label: "Track 4: TurnSharp(R) → altUpLong → downLong → TurnSharp(L)", steps: [{ kind: "turn", dir: "R", variant: "sharp" }, { kind: "altUpLong" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track5", label: "Track 5: TurnShort(R) → upLong → downLong → TurnShort(L)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "up", long: true }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track6", label: "Track 6: TurnShort(R) → altUpLong → downLong → TurnShort(L)", steps: [{ kind: "turn", dir: "R", variant: "short" }, { kind: "altUpLong" }, { kind: "straight" }, { kind: "down", long: true }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight" }] }, // 8 pieces
-  { id: "track7", label: "Track 7: smooth +2 (Up → AltUp → flat×2 → Down → AltDown)", steps: [{ kind: "up" }, { kind: "altUp" }, { kind: "straight" }, { kind: "straight" }, { kind: "down" }, { kind: "altDown" }, { kind: "straight" }] }, // 9 pieces
-  { id: "track8", label: "Track 8: upLong → AltUp → flat → Down → AltDownLong", steps: [{ kind: "up", long: true }, { kind: "altUp" }, { kind: "straight" }, { kind: "down" }, { kind: "altDownLong" }, { kind: "straight" }] }, // 8 pieces
+  // Jump calibration probes.
+  // Convention: first piece after Start is a Checkpoint so you can respawn and treat it as a "fresh start".
+  { id: "jump1", label: "Jump 1: CP → runup×6 → upLong → GAP×1 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 1 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
+  { id: "jump2", label: "Jump 2: CP → runup×4 → upLong → GAP×2 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 4 }, { kind: "up", long: true }, { kind: "gap", tiles: 2 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
+  { id: "jump3", label: "Jump 3: CP → runup×8 → upLong → GAP×3 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 3 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
+  { id: "jump4", label: "Jump 4: CP → runup×12 → upLong → GAP×4 → downLong", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 12 }, { kind: "up", long: true }, { kind: "gap", tiles: 4 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
+  { id: "jump5", label: "Jump 5: CP → high drop runup → upLong → GAP×3 → downLong", steps: [{ kind: "checkpoint" }, { kind: "up", long: true }, { kind: "up", long: true }, { kind: "straight", n: 2 }, { kind: "down", long: true }, { kind: "down", long: true }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 3 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
+  { id: "jumpCourse", label: "Jump Course: 3 jumps with checkpoints", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 1 }, { kind: "down", long: true }, { kind: "straight", n: 4 }, { kind: "checkpoint" }, { kind: "straight", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 2 }, { kind: "down", long: true }, { kind: "straight", n: 4 }, { kind: "checkpoint" }, { kind: "straight", n: 10 }, { kind: "up", long: true }, { kind: "gap", tiles: 3 }, { kind: "down", long: true }, { kind: "straight", n: 2 }] },
 ];
 
 function getScenario(id) {
@@ -294,7 +292,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "track1",
+    scenarioId = "jump1",
     name = "Manual Mini Track",
     environment = "Summer",
     format = "polytrack1",
@@ -309,6 +307,7 @@ export function generateManualMiniTrack(params = {}) {
 
   let x = 0, y = 0, z = 0;
   let heading = 0; // 0=N, 1=W, 2=S, 3=E (matches HEADING_DELTA)
+  let checkpointIdx = 0;
 
   const assertGrid = () => {
     if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(z)) {
@@ -345,10 +344,32 @@ export function generateManualMiniTrack(params = {}) {
   for (const step of scenario.steps) {
     const before = { x, y, z, heading };
     if (step.kind === "straight") {
-      add(BlockType.Straight, heading);
+      const n = Number.isFinite(step.n) ? Math.max(1, Math.floor(step.n)) : 1;
+      for (let i = 0; i < n; i++) {
+        const b = { x, y, z, heading };
+        add(BlockType.Straight, heading);
+        move(heading, 1);
+        assertGrid();
+        anchorTrace.push({ label: "Straight", ...b, rotation: heading, after: { x, y, z, heading } });
+      }
+      continue;
+    }
+
+    if (step.kind === "checkpoint") {
+      const order = Number.isFinite(step.order) ? (step.order | 0) : checkpointIdx;
+      checkpointIdx = Math.max(checkpointIdx, order + 1);
+      add(BlockType.Checkpoint, heading, order);
       move(heading, 1);
       assertGrid();
-      anchorTrace.push({ label: "Straight", ...before, rotation: heading, after: { x, y, z, heading } });
+      anchorTrace.push({ label: `Checkpoint#${order}`, ...before, rotation: heading, after: { x, y, z, heading } });
+      continue;
+    }
+
+    if (step.kind === "gap") {
+      const tiles = Number.isFinite(step.tiles) ? Math.max(1, Math.floor(step.tiles)) : 1;
+      move(heading, tiles);
+      assertGrid();
+      anchorTrace.push({ label: `GAP×${tiles}`, ...before, rotation: heading, after: { x, y, z, heading } });
       continue;
     }
 
