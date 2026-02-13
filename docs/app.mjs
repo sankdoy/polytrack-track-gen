@@ -39,6 +39,13 @@ if (hasDOM) {
   bindRange("maxAttemptsPerPiece");
   bindRange("templateChance", (v) => Number(v).toFixed(2));
   bindRange("jumpChance", (v) => Number(v).toFixed(2));
+  bindRange("wipLength");
+  bindRange("wipComplexity");
+  bindRange("wipSceneryDensity");
+  bindRange("wipJumpScale");
+  bindRange("wipElevation");
+  bindRange("wipCurviness");
+  bindRange("wipCheckpoints");
 
   // Populate test scenario dropdown
   const testScenarioEl = $("testScenario");
@@ -59,6 +66,10 @@ if (hasDOM) {
 
   $("rollSeed").addEventListener("click", () => {
     $("seed").value = String(Math.floor(Math.random() * 1_000_000));
+  });
+
+  $("wipRollSeed")?.addEventListener("click", () => {
+    $("wipSeed").value = String(Math.floor(Math.random() * 1_000_000));
   });
 
 function readParams() {
@@ -85,7 +96,7 @@ function readParams() {
   };
 }
 
-function renderResults(container, items) {
+function renderResults(container, items, statusElId = "status") {
   container.innerHTML = "";
 
   for (const r of items) {
@@ -109,10 +120,10 @@ function renderResults(container, items) {
     card.querySelector('[data-action="copy"]').addEventListener("click", async () => {
       try {
         await copyText(r.shareCode);
-        setStatus("status", "Copied share code", "good");
-        setTimeout(() => setStatus("status", ""), 1200);
+        setStatus(statusElId, "Copied share code", "good");
+        setTimeout(() => setStatus(statusElId, ""), 1200);
       } catch (e) {
-        setStatus("status", "Clipboard copy failed", "bad");
+        setStatus(statusElId, "Clipboard copy failed", "bad");
       }
     });
 
@@ -221,7 +232,7 @@ function generateTestTrack() {
       seed: "manual",
       shareCode: r.shareCode,
       details: summarizeResult(r),
-    }]);
+    }], "testStatus");
 
     setStatus("testStatus", "Test track generated", "good");
   } catch (e) {
@@ -229,9 +240,60 @@ function generateTestTrack() {
   }
 }
 
+function readWipParams() {
+  const seedRaw = $("wipSeed")?.value.trim();
+  const seed = seedRaw ? Number(seedRaw) : Date.now();
+  return {
+    name: $("name")?.value ? `${$("name").value} (WIP)` : "WIP Track",
+    length: Math.max(20, Math.min(300, Number($("wipLength")?.value || 80))),
+    elevation: Number($("wipElevation")?.value || 4),
+    curviness: Number($("wipCurviness")?.value || 4),
+    numCheckpoints: Number($("wipCheckpoints")?.value || 2),
+    environment: $("wipEnvironment")?.value || "Summer",
+    includeScenery: $("wipScenery")?.checked ?? true,
+    useExoticBlocks: $("wipExotic")?.checked ?? true,
+    complexity: Number($("wipComplexity")?.value || 6),
+    sceneryDensity: Number($("wipSceneryDensity")?.value || 5),
+    jumpScale: Number($("wipJumpScale")?.value || 5),
+    format: "polytrack1",
+    seed,
+  };
+}
+
+function generateWip() {
+  const btn = $("wipGenerateBtn");
+  if (!btn) return;
+
+  btn.disabled = true;
+  setStatus("wipStatus", "Generating...");
+
+  try {
+    const params = readWipParams();
+    const r = generateWipTrack(params);
+    renderResults($("wipResults"), [{
+      name: r.name,
+      seed: r.seed,
+      shareCode: r.shareCode,
+      details: summarizeResult(r),
+    }], "wipStatus");
+    setStatus("wipStatus", "WIP track generated", "good");
+  } catch (e) {
+    setStatus("wipStatus", e?.message || String(e), "bad");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
   $("generateBtn").addEventListener("click", generateBatch);
   $("testGenerateBtn")?.addEventListener("click", generateTestTrack);
+  $("wipGenerateBtn")?.addEventListener("click", generateWip);
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !$("generateBtn").disabled) generateBatch();
+    if (e.key !== "Enter") return;
+    const target = e.target;
+    if (target && (target.id?.startsWith("wip") || target.closest?.("#wipResults"))) {
+      if (!$("wipGenerateBtn")?.disabled) generateWip();
+      return;
+    }
+    if (!$("generateBtn").disabled) generateBatch();
   });
 }
