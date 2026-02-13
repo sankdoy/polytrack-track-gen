@@ -100,7 +100,7 @@ function bytesForUnsigned(v) {
 
 // ---- Track data structures ----
 
-class TrackPart {
+export class TrackPart {
   constructor(x, y, z, blockType, rotation, rotationAxis, color, checkpointOrder, startOrder) {
     this.x = x;
     this.y = y;
