@@ -216,6 +216,19 @@ const WIP_TEMPLATES = [
   ["pipeSection"],
 ];
 
+const EXOTIC_TEMPLATE_ACTIONS = new Set([
+  "tunnel",
+  "wallride",
+  "loop",
+  "helix_up",
+  "stunt",
+  "archway",
+  "pipeSection",
+  "bigJump",
+]);
+const BASIC_WIP_TEMPLATES = WIP_TEMPLATES.filter((tpl) => !tpl.some((a) => EXOTIC_TEMPLATE_ACTIONS.has(a)));
+const EXOTIC_WIP_TEMPLATES = WIP_TEMPLATES.filter((tpl) => tpl.some((a) => EXOTIC_TEMPLATE_ACTIONS.has(a)));
+
 // ---- Main WIP Generator ----
 
 export function generateWipTrack(params = {}) {
@@ -241,13 +254,15 @@ export function generateWipTrack(params = {}) {
   const rng = createRNG(seed);
   const env = Environment[environment] ?? Environment.Summer;
 
+  const complexityClamped = Math.max(1, Math.min(10, Number(complexity) || 5));
+  const complexity01 = (complexityClamped - 1) / 9;
   const elevationProb = Math.max(0, Math.min(0.8, elevation * 0.08));
   const turnProb = Math.max(0, Math.min(0.8, curviness * 0.09));
   const jumpProb = Math.max(0, Math.min(1, jumpChance));
   const maxHeightY = Math.max(0, Math.floor(maxHeight));
   const attemptsPerPiece = Math.max(1, Math.floor(maxAttemptsPerPiece));
-  const templateProb = 0.35; // Higher than main gen
-  const exoticProb = useExoticBlocks ? Math.min(1, complexity * 0.08) : 0;
+  const templateProb = 0.20 + complexity01 * 0.45;
+  const exoticProb = useExoticBlocks ? (0.05 + complexity01 * 0.75) : 0;
   const sceneryProb = Math.min(1, sceneryDensity * 0.015);
 
   let x = 0, y = 0, z = 0;
@@ -373,6 +388,16 @@ export function generateWipTrack(params = {}) {
     x = exit.x; y = exit.y; z = exit.z;
     resetSlopeChain();
     return true;
+  };
+
+  const pickStraightRoadType = () => {
+    if (!useExoticBlocks) return WipBlock.Straight;
+    const swapChance = exoticProb * 0.55;
+    if (rng() >= swapChance) return WipBlock.Straight;
+    const r = rng();
+    if (r < 0.40) return WipBlock.Booster;
+    if (r < 0.70) return WipBlock.WideRoad;
+    return WipBlock.NarrowRoad;
   };
 
   const placeSlopeUp = (longVariant) => {
@@ -777,6 +802,35 @@ export function generateWipTrack(params = {}) {
     return len;
   };
 
+  const tryPlaceExoticSection = (piecesLeft) => {
+    if (!useExoticBlocks || piecesLeft < 4) return 0;
+    const options = [];
+    if (piecesLeft >= 4) {
+      options.push(placeStuntSection, placeWallRideSection);
+    }
+    if (piecesLeft >= 6) {
+      options.push(placeTunnelSection, placePipeSection, placeArchwaySection);
+    }
+    if (piecesLeft >= 7) {
+      options.push(placeLoopSection);
+    }
+    if (piecesLeft >= 8 && y + 3 <= maxHeightY) {
+      options.push(placeHelixSection);
+    }
+    if (piecesLeft >= 10) {
+      options.push(() => placeJump(jumpScale / 3));
+    }
+    if (!options.length) return 0;
+
+    const attempts = 1 + Math.floor(complexity01 * 2);
+    for (let i = 0; i < attempts; i++) {
+      const fn = options[Math.floor(rng() * options.length)];
+      const placed = fn();
+      if (placed > 0) return placed;
+    }
+    return 0;
+  };
+
   // ---- Scenery placement ----
 
   const placeSceneryTree = (bx, by, bz) => {
@@ -863,8 +917,8 @@ export function generateWipTrack(params = {}) {
   // ---- Turn helpers ----
   const pickTurnVariant = () => {
     const r = rng();
-    if (r < 0.40) return "short";
-    if (r < 0.70) return "sharp";
+    if (r < (0.50 - complexity01 * 0.25)) return "short";
+    if (r < (0.85 - complexity01 * 0.15)) return "sharp";
     return "long";
   };
 
@@ -942,13 +996,18 @@ export function generateWipTrack(params = {}) {
       // Template system
       if (attempt === 0 && !shouldCp && !shouldDescend) {
         if (actionQueue.length === 0 && rng() < templateProb) {
-          actionQueue.push(...WIP_TEMPLATES[Math.floor(rng() * WIP_TEMPLATES.length)]);
+          const allowExoticTemplates = useExoticBlocks && EXOTIC_WIP_TEMPLATES.length > 0;
+          const preferExotic = allowExoticTemplates && rng() < exoticProb;
+          const pool = preferExotic
+            ? EXOTIC_WIP_TEMPLATES
+            : (BASIC_WIP_TEMPLATES.length ? BASIC_WIP_TEMPLATES : WIP_TEMPLATES);
+          actionQueue.push(...pool[Math.floor(rng() * pool.length)]);
         }
 
         if (actionQueue.length > 0) {
           const a = actionQueue[0];
           let ok = false;
-          if (a === "straight") ok = placeStraightLike(WipBlock.Straight, null);
+          if (a === "straight") ok = placeStraightLike(pickStraightRoadType(), null);
           else if (a === "turnR") ok = placeTurn90(true, pickTurnVariant());
           else if (a === "turnL") ok = placeTurn90(false, pickTurnVariant());
           else if (a === "up") ok = placeSlopeUp(rng() < 0.3);
@@ -996,6 +1055,15 @@ export function generateWipTrack(params = {}) {
         }
       }
 
+      // Opportunistic exotic section insertion
+      if (!placed && !shouldCp && !shouldDescend && slopeChainDir === null) {
+        const sectionChance = 0.02 + exoticProb * 0.28;
+        if (rng() < sectionChance) {
+          const ep = tryPlaceExoticSection(piecesLeft);
+          if (ep > 0) { placed = true; piecesPlaced += ep; i += ep - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
+        }
+      }
+
       // Elevation
       if (!placed && elevationProb > 0 && rng() < elevationProb) {
         const r = rng();
@@ -1028,7 +1096,7 @@ export function generateWipTrack(params = {}) {
       }
 
       // Default straight
-      placed = placeStraightLike(WipBlock.Straight, null);
+      placed = placeStraightLike(pickStraightRoadType(), null);
       if (placed) { piecesPlaced++; consecutiveStraight++; justPlacedPiece = true; }
     }
 
