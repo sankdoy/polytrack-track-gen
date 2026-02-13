@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Browser-only track generator + v3 share code encoder.
+// Browser-only track generator + PolyTrack1/v3 share code encoder.
 // Requires `pako` on `globalThis` (loaded via <script> in index.html).
 
 export const BlockType = {
@@ -274,21 +274,19 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 // ---- Manual mini-tracks (for debugging alignment) ----
 
 export const manualMiniTrackScenarios = [
-  // Jump calibration probes.
-  // Convention: first piece after Start is a Checkpoint so you can respawn and treat it as a "fresh start".
-  // Note: jump1 is calibrated from your "full throttle lands here" fix:
-  // takeoff = UpLong, flight = GAP×9 at y=2, landing = Down + AltDown (two-tile smooth descent).
-  { id: "jump1", label: "Jump 1 (cal): CP → runup×6 → upLong → GAP×9 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 9 }, { kind: "down" }, { kind: "altDown" }] },
-  { id: "jump2", label: "Jump 2: CP → runup×6 → upLong → GAP×8 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 8 }, { kind: "down" }, { kind: "altDown" }] },
-  { id: "jump3", label: "Jump 3: CP → runup×6 → upLong → GAP×10 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 10 }, { kind: "down" }, { kind: "altDown" }] },
-  { id: "jump4", label: "Jump 4: CP → runup×4 → upLong → GAP×7 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 4 }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }] },
-  { id: "jump5", label: "Jump 5: CP → runup×8 → upLong → GAP×11 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 11 }, { kind: "down" }, { kind: "altDown" }] },
-  { id: "jumpDrop", label: "Jump Drop: CP → upLong×2 → downLong×2 → runup×6 → upLong → GAP×9 → down → altDown", steps: [{ kind: "checkpoint" }, { kind: "up", long: true }, { kind: "up", long: true }, { kind: "down", long: true }, { kind: "down", long: true }, { kind: "straight", n: 6 }, { kind: "up", long: true }, { kind: "gap", tiles: 9 }, { kind: "down" }, { kind: "altDown" }] },
+  // Jump calibration probes (gaps in world units, sub-tile precision).
+  // Formula: gap_wu = round(13.81 * sqrt(totalFlat) - 2.51), totalFlat includes Start tile.
+  // totalFlat=8 (7 str + start) → gap=36 wu (9 tiles)
+  { id: "jump1", label: "Jump 1: runup×7 → upLong → GAP 36wu → down → altDown", steps: [{ kind: "straight", n: 7 }, { kind: "up", long: true }, { kind: "gap", tiles: 9 }, { kind: "down" }, { kind: "altDown" }] },
+  // totalFlat=5 (4 str + start) → gap=28 wu (7 tiles)
+  { id: "jump2", label: "Jump 2: runup×4 → upLong → GAP 28wu → down → altDown", steps: [{ kind: "straight", n: 4 }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }] },
+  // totalFlat=11 (10 str + start) → gap=43 wu (10.75 tiles ≈ 11)
+  { id: "jump3", label: "Jump 3: runup×10 → upLong → GAP 43wu → down → altDown", steps: [{ kind: "straight", n: 10 }, { kind: "up", long: true }, { kind: "gap", tiles: 11 }, { kind: "down" }, { kind: "altDown" }] },
 
-  // TurnShort probes (for the misalignment you're seeing on the 2x2 right-angle corners).
-  { id: "turnShortR", label: "TurnShort R: CP → straight×2 → TurnShort(R) → straight×6", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 6 }] },
-  { id: "turnShortL", label: "TurnShort L: CP → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
-  { id: "turnShortS", label: "TurnShort S: CP → straight×2 → TurnShort(R) → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "checkpoint" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
+  // TurnShort alignment probes.
+  { id: "turnShortR", label: "TurnShort R: straight×2 → TurnShort(R) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 6 }] },
+  { id: "turnShortL", label: "TurnShort L: straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
+  { id: "turnShortS", label: "TurnShort S: straight×2 → TurnShort(R) → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
 ];
 
 function getScenario(id) {
@@ -1189,7 +1187,7 @@ export function generateTrack(params = {}) {
 
     // AltDown: SlopeUp with rotation+2, stored at lower Y
     const altDownFp = [{ dx: 0, dz: 0, yMin: 0, yMax: 1 }];
-    placePieceAt(altX, baseY + 1 - 1, altZ, BlockType.SlopeUp, (heading + 2) % 4, null, null, altDownFp);
+    placePieceAt(altX, baseY, altZ, BlockType.SlopeUp, (heading + 2) % 4, null, null, altDownFp);
 
     // Cursor ends 1 tile after AltDown at ground level
     x = exitX;
