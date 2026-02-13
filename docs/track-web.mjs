@@ -287,6 +287,38 @@ export const manualMiniTrackScenarios = [
   { id: "turnShortR", label: "TurnShort R: straight×2 → TurnShort(R) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 6 }] },
   { id: "turnShortL", label: "TurnShort L: straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
   { id: "turnShortS", label: "TurnShort S: straight×2 → TurnShort(R) → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
+
+  // Comprehensive: all turn types + jumps in one track.
+  { id: "allTurnsJumps", label: "All turns + jumps", steps: [
+    // Jump 1: totalFlat=6 (5 str + start) → gap=31wu ≈ 8 tiles
+    { kind: "straight", n: 5 },
+    { kind: "up", long: true },
+    { kind: "gap", tiles: 8 },
+    { kind: "down" },
+    { kind: "altDown" },
+    { kind: "straight", n: 3 },
+    // TurnSharp right then left
+    { kind: "turn", dir: "R", variant: "sharp" },
+    { kind: "straight", n: 3 },
+    { kind: "turn", dir: "L", variant: "sharp" },
+    { kind: "straight", n: 3 },
+    // TurnShort right then left
+    { kind: "turn", dir: "R", variant: "short" },
+    { kind: "straight", n: 3 },
+    { kind: "turn", dir: "L", variant: "short" },
+    { kind: "straight", n: 3 },
+    // TurnLong3 right then left
+    { kind: "turn", dir: "R", variant: "long" },
+    { kind: "straight", n: 3 },
+    { kind: "turn", dir: "L", variant: "long" },
+    { kind: "straight", n: 3 },
+    // Jump 2: totalFlat=4 (3 str + 1 from above) → gap=24wu = 6 tiles
+    { kind: "up", long: true },
+    { kind: "gap", tiles: 6 },
+    { kind: "down" },
+    { kind: "altDown" },
+    { kind: "straight", n: 2 },
+  ] },
 ];
 
 function getScenario(id) {
@@ -1067,6 +1099,93 @@ export function generateTrack(params = {}) {
     return true;
   };
 
+  // ---- Proactive intersection placement ----
+  // Scan perpendicular directions for existing Straight pieces to route through.
+  const tryIntersectionDetour = () => {
+    if (!allowIntersections) return 0;
+    // Only attempt occasionally
+    if (rng() >= intersectionProb * 2) return 0;
+
+    // Look left and right (perpendicular to current heading)
+    const leftH = (heading + 1) % 4;
+    const rightH = (heading + 3) % 4;
+
+    for (const sideH of rng() < 0.5 ? [leftH, rightH] : [rightH, leftH]) {
+      // Scan 1-4 tiles to the side for a perpendicular Straight
+      for (let dist = 1; dist <= 4; dist++) {
+        const scanX = x + HEADING_DELTA[sideH].dx * dist;
+        const scanZ = z + HEADING_DELTA[sideH].dz * dist;
+        const existing = placedByCell.get(anchorKey(scanX, y, scanZ));
+        if (!existing) continue;
+        if (existing.blockType !== BlockType.Straight && existing.blockType !== BlockType.IntersectionCross) continue;
+        // Must be perpendicular (the existing piece runs along our forward axis)
+        if (existing.blockType === BlockType.Straight && axisForHeading(existing.rotation) === axisForHeading(sideH)) continue;
+
+        // Found a perpendicular target! Try to route: turn toward it, straights, cross through, turn back.
+        const turnRight1 = sideH === rightH;
+        const turnBack = !turnRight1;
+
+        // Step 1: Turn toward the target
+        if (!placeTurn90(turnRight1, "sharp")) return 0;
+        let placed = 1;
+
+        // Step 2: Place straights to reach the intersection (dist-1 straights needed since turn moves 1 tile)
+        let reachedTarget = false;
+        for (let s = 0; s < dist - 1; s++) {
+          if (!placeStraightLike(BlockType.Straight, null)) {
+            // Can't reach - abort (pieces already placed are kept, just stop the detour)
+            return placed;
+          }
+          placed++;
+        }
+
+        // Step 3: We should now be at or adjacent to the target cell
+        // Check if current position overlaps the target (means we crossed it)
+        if (x === scanX && z === scanZ && y === existing.y) {
+          // We're on the intersection cell - ensureIntersectionCross already handled by escape logic
+          reachedTarget = true;
+        } else {
+          // Try to place a straight that crosses through (the exit will land on the target)
+          const nextExit = nextPos(x, y, z, heading, 1);
+          if (nextExit.x === scanX && nextExit.z === scanZ) {
+            // Next cell is the target - convert it to intersection
+            if (ensureIntersectionCrossAtCell(scanX, y, scanZ, heading)) {
+              // Place straight here, exit will advance through the intersection
+              if (canFootprint(x, y, z, flatFootprint)) {
+                placePiece(BlockType.Straight, heading, null, null, flatFootprint);
+                x = nextExit.x; y = nextExit.y; z = nextExit.z;
+                resetSlopeChain();
+                placed++;
+                reachedTarget = true;
+              }
+            }
+          }
+        }
+
+        if (!reachedTarget) return placed;
+
+        // Step 4: Continue through intersection (place a straight on the other side)
+        const throughExit = nextPos(x, y, z, heading, 1);
+        if (isFree(throughExit.x, throughExit.y, throughExit.z)) {
+          if (canFootprint(x, y, z, flatFootprint)) {
+            placePiece(BlockType.Straight, heading, null, null, flatFootprint);
+            x = throughExit.x; y = throughExit.y; z = throughExit.z;
+            resetSlopeChain();
+            placed++;
+          }
+        }
+
+        // Step 5: Turn back to original heading
+        if (placeTurn90(turnBack, "sharp")) {
+          placed++;
+        }
+
+        return placed;
+      }
+    }
+    return 0;
+  };
+
   // ---- Jump placement ----
   // Jump sequence: runup straights → SlopeUpLong (takeoff) → gap → SlopeDown + AltDown (landing)
   // Gap calibrated via sqrt model from 8 in-game data points (sub-tile world-unit precision):
@@ -1367,6 +1486,22 @@ export function generateTrack(params = {}) {
         }
       }
 
+      // Intersections - proactive detour toward existing perpendicular track
+      if (!placed && allowIntersections && !shouldDescend && slopeChainDir === null) {
+        const piecesLeft = trackLength - i;
+        if (piecesLeft > 10 && piecesPlaced > 8) {
+          const detourPieces = tryIntersectionDetour();
+          if (detourPieces > 0) {
+            placed = true;
+            piecesPlaced += detourPieces;
+            i += detourPieces - 1;
+            consecutiveStraight = 0;
+            justPlacedPiece = true;
+            continue;
+          }
+        }
+      }
+
       // Turns - use bias for flowing curves
       // Also force a turn if we've had too many straight pieces
       const forceTurn = consecutiveStraight >= 5 + Math.floor(rng() * 4);
@@ -1507,32 +1642,96 @@ export function generateTrack(params = {}) {
   }
 
   // ---- Scenery ----
+  // Structured decorations: trees, buildings, and roadside barriers.
+  // Color values are byte indices into the game's palette (user-tested in-game).
   if (includeScenery) {
+    const SCENERY_COLORS = {
+      trunk: 8,    // brown-ish (to be verified in-game)
+      leaves: 3,   // green-ish
+      stone: 1,    // gray
+      brick: 6,    // red/brown
+      roof: 2,     // darker
+      barrier: 5,  // yellow/orange
+    };
+
     const roadPositions = [];
     for (const [t, parts] of trackData.parts) {
-      // Only treat road-like pieces as sources for nearby scenery placement.
       if (
-        t === BlockType.Block ||
-        t === BlockType.HalfBlock ||
-        t === BlockType.QuarterBlock ||
-        t === BlockType.PillarTop ||
-        t === BlockType.Pillar ||
-        t === BlockType.PillarBase
+        t === BlockType.Block || t === BlockType.HalfBlock || t === BlockType.QuarterBlock ||
+        t === BlockType.PillarTop || t === BlockType.Pillar || t === BlockType.PillarBase
       ) continue;
       for (const p of parts) roadPositions.push({ x: p.x, y: p.y, z: p.z });
     }
+
+    const addScenery = (sx, sy, sz, blockType, color) => {
+      if (!canReserveAt(sx, sz, sy, sy)) return false;
+      const rot = Math.floor(rng() * 4);
+      trackData.addPart(sx, sy, sz, blockType, rot, RotationAxis.YPositive, color, null, null);
+      reserveAt(sx, sz, sy, sy, blockType);
+      return true;
+    };
+
+    const placeTree = (bx, by, bz) => {
+      // Trunk: 1-2 Block pieces stacked
+      const trunkHeight = 1 + Math.floor(rng() * 2);
+      for (let ty = 0; ty < trunkHeight; ty++) {
+        if (!addScenery(bx, by + ty, bz, BlockType.Block, SCENERY_COLORS.trunk)) return;
+      }
+      // Canopy: 1-2 HalfBlock or QuarterBlock on top
+      const canopyTop = by + trunkHeight;
+      addScenery(bx, canopyTop, bz, BlockType.Block, SCENERY_COLORS.leaves);
+      // Side leaves (randomly 1-2 directions)
+      const dirs = [{ dx: TILE, dz: 0 }, { dx: -TILE, dz: 0 }, { dx: 0, dz: TILE }, { dx: 0, dz: -TILE }];
+      for (const d of dirs) {
+        if (rng() < 0.5) {
+          const leafType = rng() < 0.5 ? BlockType.HalfBlock : BlockType.QuarterBlock;
+          addScenery(bx + d.dx, canopyTop, bz + d.dz, leafType, SCENERY_COLORS.leaves);
+        }
+      }
+    };
+
+    const placeBuilding = (bx, by, bz) => {
+      const height = 2 + Math.floor(rng() * 3); // 2-4 stories
+      const wallColor = rng() < 0.5 ? SCENERY_COLORS.stone : SCENERY_COLORS.brick;
+      for (let ty = 0; ty < height; ty++) {
+        if (!addScenery(bx, by + ty, bz, BlockType.Block, wallColor)) return;
+      }
+      // Roof
+      addScenery(bx, by + height, bz, BlockType.HalfBlock, SCENERY_COLORS.roof);
+    };
+
+    const placeBarrier = (bx, by, bz) => {
+      addScenery(bx, by, bz, BlockType.QuarterBlock, SCENERY_COLORS.barrier);
+    };
+
+    // Offsets: 2 tiles away from track on each side
+    const sideOffsets = [
+      { dx: TILE * 2, dz: 0 }, { dx: -TILE * 2, dz: 0 },
+      { dx: 0, dz: TILE * 2 }, { dx: 0, dz: -TILE * 2 },
+    ];
+
     for (const pos of roadPositions) {
-      if (rng() < 0.7) continue;
-      const offsets = [{ dx: 8, dz: 0 }, { dx: -8, dz: 0 }, { dx: 0, dz: 8 }, { dx: 0, dz: -8 }];
-      for (const off of offsets) {
+      if (pos.y > 0) continue; // Only place scenery at ground level
+
+      for (const off of sideOffsets) {
         const sx = pos.x + off.dx;
         const sz = pos.z + off.dz;
-        if (!canReserveAt(sx, sz, pos.y, pos.y) || rng() < 0.85) continue;
-        const sceneryTypes = [BlockType.Block, BlockType.HalfBlock, BlockType.QuarterBlock];
-        const sType = sceneryTypes[Math.floor(rng() * sceneryTypes.length)];
-        const rot = Math.floor(rng() * 4);
-        trackData.addPart(sx, pos.y, sz, sType, rot, RotationAxis.YPositive, ColorStyle.Default, null, null);
-        reserveAt(sx, sz, pos.y, pos.y, sType);
+        if (!canReserveAt(sx, sz, pos.y, pos.y)) continue;
+
+        const r = rng();
+        if (r < 0.04) {
+          // Tree (~4% chance per side)
+          placeTree(sx, pos.y, sz);
+        } else if (r < 0.06) {
+          // Building (~2% chance per side)
+          placeBuilding(sx, pos.y, sz);
+        } else if (r < 0.10) {
+          // Barrier (~4% chance per side, closer to track)
+          const bx = pos.x + off.dx / 2; // 1 tile offset instead of 2
+          const bz = pos.z + off.dz / 2;
+          placeBarrier(bx, pos.y, bz);
+        }
+        // ~90% nothing - keeps it clean
       }
     }
   }

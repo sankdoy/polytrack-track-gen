@@ -6,7 +6,6 @@
     <title>PolyTrack Generator</title>
     <style>
       :root {
-        /* Palette-only theme */
         --olive: #867e32;
         --olive2: #595421;
         --serenity: #d2eaf1;
@@ -23,8 +22,8 @@
         --bg1: var(--cream);
 
         --text: var(--ebony);
-        --muted: rgba(126, 119, 104, 0.82); /* taupe */
-        --muted2: rgba(136, 133, 125, 0.75); /* taupe2 */
+        --muted: rgba(126, 119, 104, 0.82);
+        --muted2: rgba(136, 133, 125, 0.75);
         --ink92: rgba(50, 53, 48, 0.92);
         --ink86: rgba(50, 53, 48, 0.86);
         --ink80: rgba(50, 53, 48, 0.80);
@@ -35,9 +34,9 @@
         --stroke12: rgba(126, 119, 104, 0.28);
         --stroke14: rgba(126, 119, 104, 0.34);
 
-        --panel: rgba(227, 214, 202, 0.72);  /* cream */
-        --panel2: rgba(212, 195, 172, 0.58); /* sand dollar */
-        --border: rgba(210, 234, 241, 0.60); /* serenity */
+        --panel: rgba(227, 214, 202, 0.72);
+        --panel2: rgba(212, 195, 172, 0.58);
+        --border: rgba(210, 234, 241, 0.60);
 
         --shadow: 0 12px 40px rgba(50, 53, 48, 0.16);
         --radius: 18px;
@@ -52,7 +51,6 @@
       body {
         font-family: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background-color: var(--bg0);
-        /* Blocky low-poly accent pattern (flat fills; no smooth gradients). */
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Cpolygon points='0,0 140,0 0,110' fill='%23fdd365' fill-opacity='.28'/%3E%3Cpolygon points='140,0 260,0 320,70 190,90' fill='%23d4c3ac' fill-opacity='.30'/%3E%3Cpolygon points='0,110 110,70 190,140 40,200 0,200' fill='%23d2eaf1' fill-opacity='.55'/%3E%3Cpolygon points='190,90 320,70 320,200 210,200 160,150' fill='%23c4543c' fill-opacity='.16'/%3E%3Cpolygon points='110,70 190,10 260,80 190,140' fill='%23867e32' fill-opacity='.14'/%3E%3C/svg%3E");
         background-size: 320px 200px;
         background-repeat: repeat;
@@ -162,7 +160,8 @@
         grid-template-columns: minmax(320px, 420px) 1fr;
         grid-template-areas:
           "left right"
-          "bottom bottom";
+          "bottom bottom"
+          "extra extra";
         gap: 16px;
         align-items: start;
       }
@@ -173,7 +172,8 @@
           grid-template-areas:
             "left"
             "right"
-            "bottom";
+            "bottom"
+            "extra";
         }
       }
 
@@ -205,6 +205,7 @@
       .left { grid-area: left; }
       .right { grid-area: right; }
       .bottom { grid-area: bottom; }
+      .extra { grid-area: extra; }
 
       .panel h2 {
         font-size: 0.78rem;
@@ -415,6 +416,22 @@
         padding-left: 10px;
       }
 
+      .help-list {
+        color: var(--ink80);
+        font-size: 0.84rem;
+        line-height: 1.6;
+        padding-left: 20px;
+      }
+      .help-list li { margin-bottom: 6px; }
+      .help-list strong { color: var(--ink92); }
+
+      .help-link {
+        color: var(--olive2);
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .btn, .chiplink, input[type="text"], input[type="number"], select { transition: none !important; }
       }
@@ -425,7 +442,7 @@
       <div class="topbar-inner">
         <div class="brand">
           <h1>PolyTrack Generator</h1>
-          <span class="badge"><span class="updated" id="updated"></span>build 2026-02-12.7</span>
+          <span class="badge"><span class="updated" id="updated"></span></span>
         </div>
         <div class="top-actions">
           <a class="chiplink support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
@@ -448,13 +465,6 @@
           <div class="field">
             <label>Track Name</label>
             <input type="text" id="name" value="Generated Track" />
-          </div>
-
-          <div class="field">
-            <label>Manual Scenario</label>
-            <select id="manualScenario">
-              <option value="" selected>Random generator</option>
-            </select>
           </div>
 
           <div class="field">
@@ -512,7 +522,7 @@
 
               <div class="checkbox">
                 <input type="checkbox" id="scenery" />
-                <span>Include scenery</span>
+                <span>Include scenery (trees, buildings)</span>
               </div>
 
               <div class="checkbox">
@@ -542,16 +552,11 @@
 
               <div class="checkbox">
                 <input type="checkbox" id="allowIntersections" />
-                <span>Allow self-intersections</span>
+                <span>Allow intersections (track crosses itself)</span>
               </div>
 
               <div class="field">
-                <label>Intersection Chance <span class="val" id="intersectionChanceVal">0.15</span></label>
-                <input type="range" id="intersectionChance" min="0" max="1" value="0.15" step="0.01" />
-              </div>
-
-              <div class="field">
-                <label>Template Chance <span class="val" id="templateChanceVal">0.35</span></label>
+                <label>Pattern Chance <span class="val" id="templateChanceVal">0.35</span></label>
                 <input type="range" id="templateChance" min="0" max="1" value="0.35" step="0.01" />
               </div>
 
@@ -570,10 +575,45 @@
           </div>
           <div id="results"></div>
         </section>
+
+        <section class="panel extra" aria-label="More">
+          <details>
+            <summary>Test Tracks</summary>
+            <div class="accordionBody">
+              <p style="color:var(--muted);font-size:0.82rem;margin-bottom:10px;">
+                Generate specific test scenarios for debugging alignment, jumps, and turns.
+              </p>
+              <div class="field">
+                <label>Scenario</label>
+                <select id="testScenario"></select>
+              </div>
+              <button class="btn btn-secondary" id="testGenerateBtn" type="button">Generate Test Track</button>
+              <div class="status" id="testStatus"></div>
+              <div id="testResults" style="margin-top:10px;"></div>
+            </div>
+          </details>
+
+          <details>
+            <summary>How You Can Help</summary>
+            <div class="accordionBody">
+              <ol class="help-list">
+                <li><strong>Generate</strong> a short track (10-30 pieces) and test it in PolyTrack.</li>
+                <li>If it's <strong>broken</strong> (disconnected pieces, impossible jumps, bad landings), copy the share code.</li>
+                <li><strong>Fix it</strong> in PolyTrack's editor &mdash; adjust landings, reconnect sections, etc.</li>
+                <li>Submit <strong>both codes</strong> (original + fixed) as a
+                  <a class="help-link" href="https://github.com/sankdoy/polytrack-track-gen/issues" target="_blank" rel="noopener noreferrer">GitHub Issue</a>.
+                </li>
+              </ol>
+              <p style="color:var(--muted);font-size:0.82rem;margin-top:8px;">
+                This helps calibrate jump distances, fix turn alignments, and improve the generator for everyone.
+              </p>
+            </div>
+          </details>
+        </section>
       </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-12.7"></script>
+    <script type="module" src="./app.mjs?v=2026-02-13"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-12.7";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-13";
 
 const $ = (id) => document.getElementById(id);
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
@@ -12,8 +12,8 @@ function bindRange(id, formatter) {
   update();
 }
 
-function setStatus(text, kind) {
-  const s = $("status");
+function setStatus(elId, text, kind) {
+  const s = $(elId);
   s.classList.remove("bad", "good");
   if (kind) s.classList.add(kind);
   s.textContent = text || "";
@@ -36,24 +36,24 @@ if (hasDOM) {
   bindRange("checkpoints");
   bindRange("maxHeight");
   bindRange("maxAttemptsPerPiece");
-  bindRange("intersectionChance", (v) => Number(v).toFixed(2));
   bindRange("templateChance", (v) => Number(v).toFixed(2));
   bindRange("jumpChance", (v) => Number(v).toFixed(2));
 
-  const manualScenarioEl = $("manualScenario");
-  if (manualScenarioEl) {
+  // Populate test scenario dropdown
+  const testScenarioEl = $("testScenario");
+  if (testScenarioEl) {
     for (const s of manualMiniTrackScenarios) {
       const opt = document.createElement("option");
       opt.value = s.id;
       opt.textContent = s.label;
-      manualScenarioEl.appendChild(opt);
+      testScenarioEl.appendChild(opt);
     }
   }
 
   const updatedEl = $("updated");
   if (updatedEl) {
     const d = new Date(document.lastModified);
-    updatedEl.textContent = Number.isFinite(d.valueOf()) ? ` Updated ${d.toLocaleDateString()}` : "";
+    updatedEl.textContent = Number.isFinite(d.valueOf()) ? `Updated ${d.toLocaleDateString()}` : "";
   }
 
   $("rollSeed").addEventListener("click", () => {
@@ -65,7 +65,6 @@ function readParams() {
   const seed = seedRaw ? Number(seedRaw) : Date.now();
   return {
     name: $("name").value || "Generated Track",
-    manualScenarioId: $("manualScenario")?.value || "",
     length: Math.min(750, Math.max(10, Number($("length").value))),
     elevation: Number($("elevation").value),
     curviness: Number($("curviness").value),
@@ -77,7 +76,7 @@ function readParams() {
     maxAttemptsPerPiece: Number($("maxAttemptsPerPiece").value),
     allowSteepSlopes: $("allowSteepSlopes").checked,
     allowIntersections: $("allowIntersections").checked,
-    intersectionChance: Number($("intersectionChance").value),
+    intersectionChance: 0.3, // fixed internal value when intersections enabled
     templateChance: Number($("templateChance").value),
     jumpChance: Number($("jumpChance").value),
     format: "polytrack1",
@@ -85,9 +84,7 @@ function readParams() {
   };
 }
 
-function renderResults(items) {
-  const out = $("output");
-  const container = $("results");
+function renderResults(container, items) {
   container.innerHTML = "";
 
   for (const r of items) {
@@ -111,17 +108,15 @@ function renderResults(items) {
     card.querySelector('[data-action="copy"]').addEventListener("click", async () => {
       try {
         await copyText(r.shareCode);
-        setStatus("Copied share code", "good");
-        setTimeout(() => setStatus(""), 1200);
+        setStatus("status", "Copied share code", "good");
+        setTimeout(() => setStatus("status", ""), 1200);
       } catch (e) {
-        setStatus("Clipboard copy failed", "bad");
+        setStatus("status", "Clipboard copy failed", "bad");
       }
     });
 
     container.appendChild(card);
   }
-
-  out.style.display = "block";
 }
 
 function summarizeResult(result) {
@@ -166,31 +161,14 @@ function summarizeResult(result) {
   return `pieces: ${total}\nbyType(top): ${top}\n\nsequence(first 40):\n${seqLines || "(not available)"}${manualLine}${traceBlock}`;
 }
 
+// Main generate button
 async function generateBatch() {
   const btn = $("generateBtn");
   btn.disabled = true;
-  setStatus("Generating…");
+  setStatus("status", "Generating...");
 
   try {
     const base = readParams();
-
-    if (base.manualScenarioId) {
-      const r = generateManualMiniTrack({
-        scenarioId: base.manualScenarioId,
-        name: base.name,
-        environment: base.environment,
-      });
-      renderResults([
-        {
-          name: `${base.name} — ${r.manualScenarioLabel}`,
-          seed: "manual",
-          shareCode: r.shareCode,
-          details: summarizeResult(r),
-        },
-      ]);
-      setStatus("Manual mini-track generated", "good");
-      return;
-    }
 
     const requestedBatch = Number($("batch").value) || 1;
     let batchMax = 50;
@@ -212,17 +190,46 @@ async function generateBatch() {
       });
     }
 
-    renderResults(results);
+    const out = $("output");
+    renderResults($("results"), results);
+    out.style.display = "block";
     const suffix = batch !== requestedBatch ? ` (batch capped at ${batchMax} for performance)` : "";
-    setStatus(`${results.length} track(s) generated${suffix}`, "good");
+    setStatus("status", `${results.length} track(s) generated${suffix}`, "good");
   } catch (e) {
-    setStatus(e?.message || String(e), "bad");
+    setStatus("status", e?.message || String(e), "bad");
   } finally {
     btn.disabled = false;
   }
 }
 
+// Test track generate button
+function generateTestTrack() {
+  const scenarioId = $("testScenario")?.value;
+  if (!scenarioId) return;
+
+  try {
+    const r = generateManualMiniTrack({
+      scenarioId,
+      name: $("name").value || "Test Track",
+      environment: $("environment").value || "Summer",
+    });
+
+    const container = $("testResults");
+    renderResults(container, [{
+      name: `Test: ${r.manualScenarioLabel}`,
+      seed: "manual",
+      shareCode: r.shareCode,
+      details: summarizeResult(r),
+    }]);
+
+    setStatus("testStatus", "Test track generated", "good");
+  } catch (e) {
+    setStatus("testStatus", e?.message || String(e), "bad");
+  }
+}
+
   $("generateBtn").addEventListener("click", generateBatch);
+  $("testGenerateBtn")?.addEventListener("click", generateTestTrack);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !$("generateBtn").disabled) generateBatch();
   });
