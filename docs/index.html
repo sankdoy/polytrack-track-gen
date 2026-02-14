@@ -338,6 +338,27 @@
         cursor: pointer;
       }
 
+      .check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 750;
+        cursor: pointer;
+      }
+
+      .check input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: var(--olive);
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+
       .status { margin-top: 10px; font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
       .status.bad { color: var(--bad); }
       .status.good { color: var(--good); }
@@ -678,6 +699,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-13"></script>
+    <script type="module" src="./app.mjs?v=2026-02-14"></script>
   </body>
 </html>

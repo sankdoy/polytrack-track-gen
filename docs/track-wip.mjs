@@ -107,6 +107,28 @@ const WipBlock = {
 const WipBlockName = {};
 for (const [name, id] of Object.entries(WipBlock)) WipBlockName[id] = name;
 
+// Learned from TRACK_CODES_ONLY.txt aggregate usage:
+// keep WIP roads biased toward variants that appear often in real tracks,
+// while still preferring vanilla straight for reliability.
+const LEARNED_SURFACE_VARIANTS = [
+  { blockType: WipBlock.Straight, weight: 0.44 },
+  { blockType: WipBlock.WideRoad, weight: 0.30 },
+  { blockType: WipBlock.Booster, weight: 0.16 },
+  { blockType: WipBlock.NarrowRoad, weight: 0.10 },
+];
+
+function pickWeighted(rng, weightedItems, fallback) {
+  let total = 0;
+  for (const item of weightedItems) total += Math.max(0, Number(item.weight) || 0);
+  if (!(total > 0)) return fallback;
+  let r = rng() * total;
+  for (const item of weightedItems) {
+    r -= Math.max(0, Number(item.weight) || 0);
+    if (r <= 0) return item.blockType;
+  }
+  return weightedItems[weightedItems.length - 1]?.blockType ?? fallback;
+}
+
 // ---- Color palette (from analysis: colors 1-3, 32-40 are most used) ----
 const COLOR = {
   DEFAULT: 0,
@@ -248,6 +270,7 @@ export function generateWipTrack(params = {}) {
     sceneryDensity = 5, // 1-10: how much decoration
     jumpScale = 5,      // 1-10: how big jumps are
     useExoticBlocks = true,
+    allowRiskyRoadBlocks = false,
     format = "polytrack1",
   } = params;
 
@@ -262,7 +285,8 @@ export function generateWipTrack(params = {}) {
   const maxHeightY = Math.max(0, Math.floor(maxHeight));
   const attemptsPerPiece = Math.max(1, Math.floor(maxAttemptsPerPiece));
   const templateProb = 0.20 + complexity01 * 0.45;
-  const exoticProb = useExoticBlocks ? (0.05 + complexity01 * 0.75) : 0;
+  const surfaceSwapProb = useExoticBlocks ? (0.12 + complexity01 * 0.32) : 0;
+  const riskyRoadProb = (useExoticBlocks && allowRiskyRoadBlocks) ? (0.05 + complexity01 * 0.60) : 0;
   const sceneryProb = Math.min(1, sceneryDensity * 0.015);
 
   let x = 0, y = 0, z = 0;
@@ -349,10 +373,10 @@ export function generateWipTrack(params = {}) {
   };
 
   const placePieceAt = (px, py, pz, blockType, rotation, cpOrder, startOrder, footprint, color = 0) => {
+    if (!reserveFootprint(px, py, pz, footprint || flatFootprint)) return false;
     const part = { x: px, y: py, z: pz, blockType, rotation, color };
     placedByCell.set(anchorKey(px, py, pz), part);
     placedSequence.push(part);
-    if (!reserveFootprint(px, py, pz, footprint || flatFootprint)) return false;
     addToTrackData(px, py, pz, blockType, rotation, color, cpOrder, startOrder);
     return true;
   };
@@ -392,12 +416,8 @@ export function generateWipTrack(params = {}) {
 
   const pickStraightRoadType = () => {
     if (!useExoticBlocks) return WipBlock.Straight;
-    const swapChance = exoticProb * 0.55;
-    if (rng() >= swapChance) return WipBlock.Straight;
-    const r = rng();
-    if (r < 0.40) return WipBlock.Booster;
-    if (r < 0.70) return WipBlock.WideRoad;
-    return WipBlock.NarrowRoad;
+    if (rng() >= surfaceSwapProb) return WipBlock.Straight;
+    return pickWeighted(rng, LEARNED_SURFACE_VARIANTS, WipBlock.Straight);
   };
 
   const placeSlopeUp = (longVariant) => {
@@ -805,20 +825,23 @@ export function generateWipTrack(params = {}) {
   const tryPlaceExoticSection = (piecesLeft) => {
     if (!useExoticBlocks || piecesLeft < 4) return 0;
     const options = [];
-    if (piecesLeft >= 4) {
-      options.push(placeStuntSection, placeWallRideSection);
-    }
     if (piecesLeft >= 6) {
-      options.push(placeTunnelSection, placePipeSection, placeArchwaySection);
-    }
-    if (piecesLeft >= 7) {
-      options.push(placeLoopSection);
-    }
-    if (piecesLeft >= 8 && y + 3 <= maxHeightY) {
-      options.push(placeHelixSection);
+      options.push(placeTunnelSection, placeArchwaySection);
     }
     if (piecesLeft >= 10) {
       options.push(() => placeJump(jumpScale / 3));
+    }
+    if (allowRiskyRoadBlocks && piecesLeft >= 4) {
+      options.push(placeStuntSection, placeWallRideSection);
+    }
+    if (allowRiskyRoadBlocks && piecesLeft >= 6) {
+      options.push(placePipeSection);
+    }
+    if (allowRiskyRoadBlocks && piecesLeft >= 7) {
+      options.push(placeLoopSection);
+    }
+    if (allowRiskyRoadBlocks && piecesLeft >= 8 && y + 3 <= maxHeightY) {
+      options.push(placeHelixSection);
     }
     if (!options.length) return 0;
 
@@ -996,8 +1019,8 @@ export function generateWipTrack(params = {}) {
       // Template system
       if (attempt === 0 && !shouldCp && !shouldDescend) {
         if (actionQueue.length === 0 && rng() < templateProb) {
-          const allowExoticTemplates = useExoticBlocks && EXOTIC_WIP_TEMPLATES.length > 0;
-          const preferExotic = allowExoticTemplates && rng() < exoticProb;
+          const allowExoticTemplates = useExoticBlocks && allowRiskyRoadBlocks && EXOTIC_WIP_TEMPLATES.length > 0;
+          const preferExotic = allowExoticTemplates && rng() < riskyRoadProb;
           const pool = preferExotic
             ? EXOTIC_WIP_TEMPLATES
             : (BASIC_WIP_TEMPLATES.length ? BASIC_WIP_TEMPLATES : WIP_TEMPLATES);
@@ -1027,18 +1050,22 @@ export function generateWipTrack(params = {}) {
             if (tp > 0) { actionQueue.shift(); placed = true; piecesPlaced += tp; i += tp - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
           }
           else if (a === "wallride") {
+            if (!allowRiskyRoadBlocks) { actionQueue.shift(); continue; }
             const wp = placeWallRideSection();
             if (wp > 0) { actionQueue.shift(); placed = true; piecesPlaced += wp; i += wp - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
           }
           else if (a === "loop") {
+            if (!allowRiskyRoadBlocks) { actionQueue.shift(); continue; }
             const lp = placeLoopSection();
             if (lp > 0) { actionQueue.shift(); placed = true; piecesPlaced += lp; i += lp - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
           }
           else if (a === "helix_up") {
+            if (!allowRiskyRoadBlocks) { actionQueue.shift(); continue; }
             const hp = placeHelixSection();
             if (hp > 0) { actionQueue.shift(); placed = true; piecesPlaced += hp; i += hp - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
           }
           else if (a === "stunt") {
+            if (!allowRiskyRoadBlocks) { actionQueue.shift(); continue; }
             const sp = placeStuntSection();
             if (sp > 0) { actionQueue.shift(); placed = true; piecesPlaced += sp; i += sp - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
           }
@@ -1047,6 +1074,7 @@ export function generateWipTrack(params = {}) {
             if (ap > 0) { actionQueue.shift(); placed = true; piecesPlaced += ap; i += ap - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
           }
           else if (a === "pipeSection") {
+            if (!allowRiskyRoadBlocks) { actionQueue.shift(); continue; }
             const pp = placePipeSection();
             if (pp > 0) { actionQueue.shift(); placed = true; piecesPlaced += pp; i += pp - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
           }
@@ -1057,7 +1085,7 @@ export function generateWipTrack(params = {}) {
 
       // Opportunistic exotic section insertion
       if (!placed && !shouldCp && !shouldDescend && slopeChainDir === null) {
-        const sectionChance = 0.02 + exoticProb * 0.28;
+        const sectionChance = 0.02 + (allowRiskyRoadBlocks ? (riskyRoadProb * 0.28) : 0.04);
         if (rng() < sectionChance) {
           const ep = tryPlaceExoticSection(piecesLeft);
           if (ep > 0) { placed = true; piecesPlaced += ep; i += ep - 1; consecutiveStraight = 0; justPlacedPiece = true; continue; }
@@ -1124,8 +1152,42 @@ export function generateWipTrack(params = {}) {
   }
 
   // ---- Finish ----
-  if (isFree(x, y, z)) {
-    placePiece(WipBlock.Finish, heading, null, null, flatFootprint);
+  let finishPlaced = false;
+  if (canFootprint(x, y, z, flatFootprint)) {
+    finishPlaced = !!placePiece(WipBlock.Finish, heading, null, null, flatFootprint);
+  } else {
+    const prevX = x - HEADING_DELTA[heading].dx;
+    const prevZ = z - HEADING_DELTA[heading].dz;
+    for (const tryH of [heading, (heading + 1) % 4, (heading + 3) % 4, (heading + 2) % 4]) {
+      const alt = nextPos(prevX, y, prevZ, tryH, 1);
+      if (!canFootprint(alt.x, alt.y, alt.z, flatFootprint)) continue;
+      if (placePieceAt(alt.x, alt.y, alt.z, WipBlock.Finish, tryH, null, null, flatFootprint)) {
+        finishPlaced = true;
+        x = alt.x; y = alt.y; z = alt.z; heading = tryH;
+        break;
+      }
+    }
+  }
+
+  // Last resort: replace the latest non-start/non-checkpoint path block with finish.
+  if (!finishPlaced) {
+    for (let i = placedSequence.length - 1; i >= 0; i--) {
+      const p = placedSequence[i];
+      if (p.blockType === WipBlock.Start || p.blockType === WipBlock.Checkpoint) continue;
+      const arr = trackData.parts.get(p.blockType);
+      if (!arr || !arr.length) continue;
+      const idx = arr.findIndex((q) =>
+        q.x === p.x && q.y === p.y && q.z === p.z &&
+        q.rotation === p.rotation && q.color === p.color
+      );
+      if (idx < 0) continue;
+      arr.splice(idx, 1);
+      if (!arr.length) trackData.parts.delete(p.blockType);
+      p.blockType = WipBlock.Finish;
+      addToTrackData(p.x, p.y, p.z, WipBlock.Finish, p.rotation, p.color, null, null);
+      finishPlaced = true;
+      break;
+    }
   }
 
   // ---- Scenery (post-generation) ----

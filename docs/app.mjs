@@ -1,5 +1,5 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-13";
-import { generateWipTrack } from "./track-wip.mjs?v=2026-02-13";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-14";
+import { generateWipTrack } from "./track-wip.mjs?v=2026-02-14";
 
 const $ = (id) => document.getElementById(id);
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
