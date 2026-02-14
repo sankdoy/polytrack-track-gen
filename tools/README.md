@@ -25,6 +25,10 @@ These scripts are for working with large dumps of PolyTrack tracks and for extra
   - `node tools/v3/analyze-sharecodes.mjs --input sharecodes.txt --limit 1000`
 - Extract a compact “connector rules” JSON (top adjacency hints per piece/rotation):
   - `node tools/v3/extract-connector-rules.mjs --input sharecodes.txt --limit 2000 --out rules.json`
+- Build/update tube-logic snapshot data from a v3 map:
+  - `node tools/v3/update-tube-expected.mjs --line 51`
+- Run tube-logic tests (uses snapshot by default; override with `TUBE_SHARE_CODE`):
+  - `node --test tools/v3/tube-logic.test.mjs`
 
 ## PolyTrack1
 

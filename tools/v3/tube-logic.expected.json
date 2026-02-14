@@ -1,0 +1,606 @@
+{
+  "source": {
+    "type": "track_codes_only",
+    "path": "TRACK_CODES_ONLY.txt",
+    "line": 51
+  },
+  "profile": {
+    "name": "ethereal angels",
+    "tubePartCount": 3239,
+    "tubePieceCounts": {
+      "31": 1360,
+      "32": 845,
+      "33": 72,
+      "45": 377,
+      "46": 114,
+      "49": 29,
+      "50": 296,
+      "62": 57,
+      "63": 50,
+      "64": 39
+    },
+    "pieceRotationSamples": {
+      "31:r0": 316,
+      "31:r1": 427,
+      "31:r2": 269,
+      "31:r3": 348,
+      "32:r0": 150,
+      "32:r1": 300,
+      "32:r2": 134,
+      "32:r3": 261,
+      "33:r1": 18,
+      "33:r2": 20,
+      "33:r3": 34,
+      "45:r0": 87,
+      "45:r1": 105,
+      "45:r2": 86,
+      "45:r3": 99,
+      "46:r0": 32,
+      "46:r1": 21,
+      "46:r2": 33,
+      "46:r3": 28,
+      "49:r0": 5,
+      "49:r1": 12,
+      "49:r2": 8,
+      "49:r3": 4,
+      "50:r0": 47,
+      "50:r1": 54,
+      "50:r2": 88,
+      "50:r3": 107,
+      "62:r0": 21,
+      "62:r1": 3,
+      "62:r2": 27,
+      "62:r3": 6,
+      "63:r0": 3,
+      "63:r1": 9,
+      "63:r2": 7,
+      "63:r3": 31,
+      "64:r0": 7,
+      "64:r1": 4,
+      "64:r2": 18,
+      "64:r3": 10
+    },
+    "topOffsets": {
+      "31:r0": [
+        {
+          "offset": "W:dy0",
+          "count": 226
+        },
+        {
+          "offset": "E:dy0",
+          "count": 225
+        },
+        {
+          "offset": "E:dy-1",
+          "count": 190
+        }
+      ],
+      "31:r1": [
+        {
+          "offset": "N:dy0",
+          "count": 343
+        },
+        {
+          "offset": "S:dy0",
+          "count": 341
+        },
+        {
+          "offset": "S:dy1",
+          "count": 275
+        }
+      ],
+      "31:r2": [
+        {
+          "offset": "W:dy0",
+          "count": 166
+        },
+        {
+          "offset": "E:dy0",
+          "count": 162
+        },
+        {
+          "offset": "E:dy1",
+          "count": 126
+        }
+      ],
+      "31:r3": [
+        {
+          "offset": "N:dy0",
+          "count": 268
+        },
+        {
+          "offset": "S:dy0",
+          "count": 268
+        },
+        {
+          "offset": "N:dy1",
+          "count": 206
+        }
+      ],
+      "32:r0": [
+        {
+          "offset": "S:dy0",
+          "count": 83
+        },
+        {
+          "offset": "W:dy0",
+          "count": 68
+        },
+        {
+          "offset": "E:dy0",
+          "count": 67
+        }
+      ],
+      "32:r1": [
+        {
+          "offset": "S:dy0",
+          "count": 200
+        },
+        {
+          "offset": "N:dy0",
+          "count": 197
+        },
+        {
+          "offset": "E:dy0",
+          "count": 122
+        }
+      ],
+      "32:r2": [
+        {
+          "offset": "N:dy0",
+          "count": 73
+        },
+        {
+          "offset": "E:dy0",
+          "count": 56
+        },
+        {
+          "offset": "W:dy0",
+          "count": 55
+        }
+      ],
+      "32:r3": [
+        {
+          "offset": "S:dy0",
+          "count": 160
+        },
+        {
+          "offset": "N:dy0",
+          "count": 156
+        },
+        {
+          "offset": "W:dy0",
+          "count": 122
+        }
+      ],
+      "33:r1": [
+        {
+          "offset": "N:dy0",
+          "count": 16
+        },
+        {
+          "offset": "S:dy0",
+          "count": 16
+        }
+      ],
+      "33:r2": [
+        {
+          "offset": "E:dy0",
+          "count": 17
+        },
+        {
+          "offset": "W:dy0",
+          "count": 17
+        },
+        {
+          "offset": "N:dy0",
+          "count": 8
+        }
+      ],
+      "33:r3": [
+        {
+          "offset": "N:dy0",
+          "count": 31
+        },
+        {
+          "offset": "S:dy0",
+          "count": 31
+        },
+        {
+          "offset": "W:dy-1",
+          "count": 2
+        }
+      ],
+      "45:r0": [
+        {
+          "offset": "N:dy0",
+          "count": 50
+        },
+        {
+          "offset": "N:dy-1",
+          "count": 47
+        },
+        {
+          "offset": "N:dy1",
+          "count": 46
+        }
+      ],
+      "45:r1": [
+        {
+          "offset": "W:dy2",
+          "count": 72
+        },
+        {
+          "offset": "W:dy0",
+          "count": 71
+        },
+        {
+          "offset": "W:dy-1",
+          "count": 70
+        }
+      ],
+      "45:r2": [
+        {
+          "offset": "S:dy0",
+          "count": 50
+        },
+        {
+          "offset": "S:dy1",
+          "count": 47
+        },
+        {
+          "offset": "S:dy-1",
+          "count": 46
+        }
+      ],
+      "45:r3": [
+        {
+          "offset": "E:dy-2",
+          "count": 74
+        },
+        {
+          "offset": "E:dy0",
+          "count": 72
+        },
+        {
+          "offset": "E:dy-1",
+          "count": 71
+        }
+      ],
+      "46:r0": [
+        {
+          "offset": "N:dy-2",
+          "count": 26
+        },
+        {
+          "offset": "N:dy1",
+          "count": 26
+        },
+        {
+          "offset": "N:dy0",
+          "count": 25
+        }
+      ],
+      "46:r1": [
+        {
+          "offset": "N:dy-1",
+          "count": 16
+        },
+        {
+          "offset": "N:dy-2",
+          "count": 16
+        },
+        {
+          "offset": "N:dy0",
+          "count": 15
+        }
+      ],
+      "46:r2": [
+        {
+          "offset": "W:dy-2",
+          "count": 26
+        },
+        {
+          "offset": "W:dy0",
+          "count": 26
+        },
+        {
+          "offset": "W:dy1",
+          "count": 26
+        }
+      ],
+      "46:r3": [
+        {
+          "offset": "E:dy-1",
+          "count": 26
+        },
+        {
+          "offset": "E:dy0",
+          "count": 26
+        },
+        {
+          "offset": "E:dy2",
+          "count": 26
+        }
+      ],
+      "49:r0": [
+        {
+          "offset": "E:dy0",
+          "count": 4
+        },
+        {
+          "offset": "S:dy0",
+          "count": 3
+        }
+      ],
+      "49:r1": [
+        {
+          "offset": "N:dy0",
+          "count": 9
+        },
+        {
+          "offset": "S:dy0",
+          "count": 7
+        },
+        {
+          "offset": "E:dy0",
+          "count": 5
+        }
+      ],
+      "49:r2": [
+        {
+          "offset": "N:dy0",
+          "count": 6
+        },
+        {
+          "offset": "W:dy0",
+          "count": 3
+        },
+        {
+          "offset": "S:dy0",
+          "count": 2
+        }
+      ],
+      "49:r3": [
+        {
+          "offset": "S:dy0",
+          "count": 3
+        },
+        {
+          "offset": "W:dy0",
+          "count": 3
+        }
+      ],
+      "50:r0": [
+        {
+          "offset": "S:dy1",
+          "count": 42
+        },
+        {
+          "offset": "E:dy0",
+          "count": 41
+        },
+        {
+          "offset": "E:dy-1",
+          "count": 39
+        }
+      ],
+      "50:r1": [
+        {
+          "offset": "E:dy0",
+          "count": 51
+        },
+        {
+          "offset": "N:dy-1",
+          "count": 45
+        },
+        {
+          "offset": "E:dy1",
+          "count": 43
+        }
+      ],
+      "50:r2": [
+        {
+          "offset": "N:dy0",
+          "count": 74
+        },
+        {
+          "offset": "N:dy-1",
+          "count": 66
+        },
+        {
+          "offset": "N:dy1",
+          "count": 64
+        }
+      ],
+      "50:r3": [
+        {
+          "offset": "S:dy0",
+          "count": 73
+        },
+        {
+          "offset": "S:dy1",
+          "count": 67
+        },
+        {
+          "offset": "S:dy-1",
+          "count": 66
+        }
+      ],
+      "62:r0": [
+        {
+          "offset": "E:dy0",
+          "count": 7
+        },
+        {
+          "offset": "W:dy0",
+          "count": 7
+        },
+        {
+          "offset": "N:dy-2",
+          "count": 2
+        }
+      ],
+      "62:r1": [
+        {
+          "offset": "N:dy-1",
+          "count": 1
+        },
+        {
+          "offset": "N:dy-2",
+          "count": 1
+        },
+        {
+          "offset": "N:dy0",
+          "count": 1
+        }
+      ],
+      "62:r2": [
+        {
+          "offset": "E:dy0",
+          "count": 11
+        },
+        {
+          "offset": "W:dy0",
+          "count": 11
+        }
+      ],
+      "62:r3": [
+        {
+          "offset": "N:dy-2",
+          "count": 2
+        },
+        {
+          "offset": "S:dy2",
+          "count": 2
+        },
+        {
+          "offset": "E:dy0",
+          "count": 1
+        }
+      ],
+      "63:r0": [
+        {
+          "offset": "W:dy-2",
+          "count": 2
+        },
+        {
+          "offset": "W:dy-1",
+          "count": 1
+        }
+      ],
+      "63:r1": [
+        {
+          "offset": "N:dy2",
+          "count": 4
+        },
+        {
+          "offset": "N:dy1",
+          "count": 3
+        },
+        {
+          "offset": "N:dy0",
+          "count": 2
+        }
+      ],
+      "63:r2": [
+        {
+          "offset": "W:dy-1",
+          "count": 3
+        },
+        {
+          "offset": "W:dy-2",
+          "count": 3
+        },
+        {
+          "offset": "W:dy0",
+          "count": 3
+        }
+      ],
+      "63:r3": [
+        {
+          "offset": "N:dy-2",
+          "count": 6
+        },
+        {
+          "offset": "N:dy-1",
+          "count": 4
+        },
+        {
+          "offset": "N:dy0",
+          "count": 2
+        }
+      ],
+      "64:r0": [
+        {
+          "offset": "E:dy2",
+          "count": 2
+        },
+        {
+          "offset": "E:dy1",
+          "count": 1
+        }
+      ],
+      "64:r1": [
+        {
+          "offset": "S:dy-2",
+          "count": 4
+        },
+        {
+          "offset": "S:dy-1",
+          "count": 3
+        },
+        {
+          "offset": "S:dy0",
+          "count": 2
+        }
+      ],
+      "64:r2": [
+        {
+          "offset": "E:dy-2",
+          "count": 3
+        },
+        {
+          "offset": "E:dy2",
+          "count": 3
+        },
+        {
+          "offset": "E:dy-1",
+          "count": 2
+        }
+      ],
+      "64:r3": [
+        {
+          "offset": "S:dy2",
+          "count": 4
+        },
+        {
+          "offset": "S:dy-1",
+          "count": 3
+        },
+        {
+          "offset": "S:dy-2",
+          "count": 3
+        }
+      ]
+    },
+    "verticalBias": {
+      "62": {
+        "total": 57,
+        "anyVertical": 10,
+        "hasPositiveDy": 6,
+        "hasNegativeDy": 8,
+        "positiveRatio": 0.105263,
+        "negativeRatio": 0.140351
+      },
+      "63": {
+        "total": 50,
+        "anyVertical": 23,
+        "hasPositiveDy": 11,
+        "hasNegativeDy": 14,
+        "positiveRatio": 0.22,
+        "negativeRatio": 0.28
+      }
+    }
+  }
+}
