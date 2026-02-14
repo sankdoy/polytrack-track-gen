@@ -2,6 +2,8 @@
 // Browser-only track generator + PolyTrack1/v3 share code encoder.
 // Requires `pako` on `globalThis` (loaded via <script> in index.html).
 
+import { TUBE_REFERENCE_DATA } from "./tube-reference-data.mjs";
+
 export const BlockType = {
   Straight: 0,
   TurnSharp: 1,
@@ -68,6 +70,186 @@ export const ColorStyle = { Default: 0 };
 
 export const BlockTypeName = {};
 for (const [name, id] of Object.entries(BlockType)) BlockTypeName[id] = name;
+
+const REF_START_ID = 5;
+const REF_FINISH_ID = 6;
+
+function getRefTemplate(templateId) {
+  const t = TUBE_REFERENCE_DATA[templateId];
+  if (!t) throw new Error(`Unknown tube reference template: ${templateId}`);
+  return t;
+}
+
+function tuplesToParts(tuples) {
+  return tuples.map(([blockType, x, y, z, rotation, rotAxis, color, checkpointOrder, startOrder]) => ({
+    blockType,
+    x,
+    y,
+    z,
+    rotation,
+    rotAxis,
+    color,
+    checkpointOrder,
+    startOrder,
+  }));
+}
+
+function clonePart(p) {
+  return {
+    blockType: p.blockType,
+    x: p.x,
+    y: p.y,
+    z: p.z,
+    rotation: p.rotation,
+    rotAxis: p.rotAxis,
+    color: p.color,
+    checkpointOrder: p.checkpointOrder ?? null,
+    startOrder: p.startOrder ?? null,
+  };
+}
+
+function partKey(p) {
+  const co = p.checkpointOrder ?? "";
+  const so = p.startOrder ?? "";
+  return `${p.blockType}|${p.x}|${p.y}|${p.z}|${p.rotation}|${p.rotAxis}|${p.color}|${co}|${so}`;
+}
+
+function dedupeParts(parts) {
+  const out = [];
+  const seen = new Set();
+  for (const p of parts) {
+    const k = partKey(p);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+  }
+  return out;
+}
+
+function referenceSegmentRepeatParts(segments, includeEndpoints) {
+  const n = Math.max(1, Math.floor(segments));
+  const segment = tuplesToParts(getRefTemplate("tube_ref_segment_exact").parts);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const targetZ = -4 * (i + 1);
+    const dz = targetZ - (-32);
+    for (const p of segment) {
+      out.push({ ...clonePart(p), z: p.z + dz });
+    }
+  }
+
+  if (includeEndpoints) {
+    const straight = tuplesToParts(getRefTemplate("tube_ref_straight_exact").parts);
+    const start = straight.find((p) => p.blockType === REF_START_ID);
+    const finish = straight.find((p) => p.blockType === REF_FINISH_ID);
+    if (start) out.push(clonePart(start));
+    if (finish) out.push({ ...clonePart(finish), z: -4 * (n + 1) });
+  }
+
+  return dedupeParts(out);
+}
+
+function buildPartsFromTubeReferenceRecipe(recipe) {
+  const kind = recipe?.kind;
+  if (kind === "exact") {
+    const template = getRefTemplate(recipe.templateId);
+    return tuplesToParts(template.parts).map(clonePart);
+  }
+
+  if (kind === "segment_repeat") {
+    return referenceSegmentRepeatParts(recipe.segments ?? 8, recipe.includeEndpoints !== false);
+  }
+
+  if (kind === "composite") {
+    const out = [];
+    for (const mod of recipe.modules || []) {
+      const template = getRefTemplate(mod.templateId);
+      const dx = mod.dx || 0;
+      const dy = mod.dy || 0;
+      const dz = mod.dz || 0;
+      const dropStart = !!mod.dropStart;
+      const dropFinish = !!mod.dropFinish;
+
+      for (const p0 of tuplesToParts(template.parts)) {
+        if (dropStart && p0.blockType === REF_START_ID) continue;
+        if (dropFinish && p0.blockType === REF_FINISH_ID) continue;
+        out.push({ ...clonePart(p0), x: p0.x + dx, y: p0.y + dy, z: p0.z + dz });
+      }
+    }
+    return dedupeParts(out);
+  }
+
+  throw new Error(`Unknown tube reference recipe kind: ${String(kind)}`);
+}
+
+function buildTubeReferenceScenarios() {
+  const scenarios = [
+    { id: "tube_ref_exact_straight", label: "Tube Ref Objective: exact straight from reference", tubeReferenceRecipe: { kind: "exact", templateId: "tube_ref_straight_exact" } },
+    { id: "tube_ref_exact_segment", label: "Tube Ref Objective: exact single segment from reference", tubeReferenceRecipe: { kind: "exact", templateId: "tube_ref_segment_exact" } },
+    { id: "tube_ref_exact_left_turn", label: "Tube Ref Objective: exact LEFT turn from reference", tubeReferenceRecipe: { kind: "exact", templateId: "tube_ref_left_exact" } },
+    { id: "tube_ref_exact_right_turn", label: "Tube Ref Objective: exact RIGHT turn from reference", tubeReferenceRecipe: { kind: "exact", templateId: "tube_ref_right_exact" } },
+    { id: "tube_ref_exact_up_turn", label: "Tube Ref Objective: exact UP turn from reference", tubeReferenceRecipe: { kind: "exact", templateId: "tube_ref_up_exact" } },
+  ];
+
+  for (const n of [1, 2, 3, 4, 6, 8, 10, 12, 16]) {
+    scenarios.push({
+      id: `tube_ref_segment_repeat_${String(n).padStart(2, "0")}`,
+      label: `Tube Ref Objective: segment-repeat straight x${n} (derived from reference segment)`,
+      tubeReferenceRecipe: { kind: "segment_repeat", segments: n, includeEndpoints: true },
+    });
+  }
+
+  scenarios.push(
+    {
+      id: "tube_ref_left_then_right",
+      label: "Tube Ref Objective: LEFT then RIGHT turn pair (derived composite)",
+      tubeReferenceRecipe: {
+        kind: "composite",
+        modules: [
+          { templateId: "tube_ref_left_exact", dropFinish: true },
+          { templateId: "tube_ref_right_exact", dropStart: true },
+        ],
+      },
+    },
+    {
+      id: "tube_ref_right_then_left",
+      label: "Tube Ref Objective: RIGHT then LEFT turn pair (derived composite)",
+      tubeReferenceRecipe: {
+        kind: "composite",
+        modules: [
+          { templateId: "tube_ref_right_exact", dropFinish: true },
+          { templateId: "tube_ref_left_exact", dropStart: true },
+        ],
+      },
+    },
+    {
+      id: "tube_ref_up_turn_double_climb",
+      label: "Tube Ref Objective: UP turn repeated twice (stacked climb)",
+      tubeReferenceRecipe: {
+        kind: "composite",
+        modules: [
+          { templateId: "tube_ref_up_exact", dropFinish: true },
+          { templateId: "tube_ref_up_exact", dx: 0, dy: 18, dz: 22, dropStart: true },
+        ],
+      },
+    },
+    {
+      id: "tube_ref_module_gallery",
+      label: "Tube Ref Objective: gallery of exact modules in one map (straight + left + right + up)",
+      tubeReferenceRecipe: {
+        kind: "composite",
+        modules: [
+          { templateId: "tube_ref_straight_exact" },
+          { templateId: "tube_ref_left_exact", dx: 40 },
+          { templateId: "tube_ref_right_exact", dx: 80 },
+          { templateId: "tube_ref_up_exact", dx: 120 },
+        ],
+      },
+    },
+  );
+
+  return scenarios;
+}
 
 // ---- Encoding (must match game exactly) ----
 
@@ -319,12 +501,7 @@ export const manualMiniTrackScenarios = [
   { id: "turnShortL", label: "TurnShort L: straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
   { id: "turnShortS", label: "TurnShort S: straight×2 → TurnShort(R) → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
 
-  // Tube logic probes.
-  { id: "tubeStraight", label: "Tube Straight: pipe×14", steps: [{ kind: "tubeStraight", n: 14 }] },
-  { id: "tubeTurnL", label: "Tube Left Turn: pipe×4 → corkLeft → pipe×10", steps: [{ kind: "tubeStraight", n: 4 }, { kind: "tubeTurn", dir: "L" }, { kind: "tubeStraight", n: 10 }] },
-  { id: "tubeTurnR", label: "Tube Right Turn: pipe×4 → corkRight → pipe×10", steps: [{ kind: "tubeStraight", n: 4 }, { kind: "tubeTurn", dir: "R" }, { kind: "tubeStraight", n: 10 }] },
-  { id: "tubeUp", label: "Tube Up Turn: pipe×3 → spiralUp×6 → tubeOpen×4", steps: [{ kind: "tubeStraight", n: 3 }, { kind: "tubeUp", n: 6 }, { kind: "tubeStraight", n: 4, blockType: "open" }] },
-  { id: "tubeDown", label: "Tube Down Turn: pipe×3 → spiralUp×4 → spiralDown×4 → tubeOpen×4", steps: [{ kind: "tubeStraight", n: 3 }, { kind: "tubeUp", n: 4 }, { kind: "tubeDown", n: 4 }, { kind: "tubeStraight", n: 4, blockType: "open" }] },
+  ...buildTubeReferenceScenarios(),
 
   // Large weird/exotic test battery (objective-first names).
   { id: "obj_wallride_right_hold", label: "Objective: sustain RIGHT wall ride for 14 segments (stability)", steps: [{ kind: "pieceRun", blockType: "WallRideRight", n: 14 }] },
@@ -345,7 +522,7 @@ export const manualMiniTrackScenarios = [
 
   { id: "obj_helix_climb_high", label: "Objective: long helix climb (vertical accumulation)", steps: [{ kind: "pieceRun", blockType: "Helix", n: 10, dyPerPiece: 1 }, { kind: "straight", n: 4 }] },
   { id: "obj_helix_climb_then_spiral_down", label: "Objective: helix up then spiral down back to baseline", steps: [{ kind: "pieceRun", blockType: "Helix", n: 6, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 6, dyPerPiece: -1 }, { kind: "straight", n: 4 }] },
-  { id: "obj_spiral_stairs_up_down", label: "Objective: spiral stair up/down symmetry", steps: [{ kind: "pieceRun", blockType: "SpiralUp", n: 8, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 8, dyPerPiece: -1 }, { kind: "tubeStraight", n: 4 }] },
+  { id: "obj_spiral_stairs_up_down", label: "Objective: spiral stair up/down symmetry", steps: [{ kind: "pieceRun", blockType: "SpiralUp", n: 8, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 8, dyPerPiece: -1 }, { kind: "pieceRun", blockType: "Pipe", n: 4 }] },
 
   { id: "obj_loop_full_chain", label: "Objective: repeated full loop pieces (upside-down stress)", steps: [{ kind: "pieceRun", blockType: "LoopFull", n: 10 }, { kind: "straight", n: 4 }] },
   { id: "obj_loop_half_chain", label: "Objective: repeated half loop pieces (inversion transitions)", steps: [{ kind: "pieceRun", blockType: "LoopHalf", n: 12 }, { kind: "straight", n: 4 }] },
@@ -362,7 +539,7 @@ export const manualMiniTrackScenarios = [
   { id: "obj_curvebank_mixed", label: "Objective: mixed curve-bank variants back-to-back", steps: [{ kind: "pieceRun", blockType: "CurveBank", n: 6 }, { kind: "pieceRun", blockType: "CurveBankWide", n: 6 }, { kind: "straight", n: 6 }] },
   { id: "obj_wide_narrow_transitions", label: "Objective: repeated wide↔narrow road transitions", steps: [{ kind: "pieceRun", blockType: "WideRoad", n: 6 }, { kind: "pieceRun", blockType: "NarrowRoad", n: 6 }, { kind: "pieceRun", blockType: "WideRoad", n: 6 }, { kind: "pieceRun", blockType: "NarrowRoad", n: 6 }] },
 
-  { id: "obj_wild_mix_a", label: "Objective: wild mix A (tube + wall ride + jump + helix)", steps: [{ kind: "tubeStraight", n: 4 }, { kind: "pieceRun", blockType: "WallRideRight", n: 4 }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }, { kind: "pieceRun", blockType: "Helix", n: 4, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 4, dyPerPiece: -1 }] },
+  { id: "obj_wild_mix_a", label: "Objective: wild mix A (tube + wall ride + jump + helix)", steps: [{ kind: "pieceRun", blockType: "Pipe", n: 4 }, { kind: "pieceRun", blockType: "WallRideRight", n: 4 }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }, { kind: "pieceRun", blockType: "Helix", n: 4, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 4, dyPerPiece: -1 }] },
   { id: "obj_wild_mix_b", label: "Objective: wild mix B (loop + cork + tunnel + bank)", steps: [{ kind: "pieceRun", blockType: "LoopStart", n: 1 }, { kind: "pieceRun", blockType: "LoopMid", n: 3 }, { kind: "pieceRun", blockType: "LoopEnd", n: 1 }, { kind: "pieceRun", blockType: "CorkLeft", n: 4 }, { kind: "pieceRun", blockType: "TunnelMid", n: 4 }, { kind: "pieceRun", blockType: "BankRight", n: 4 }, { kind: "straight", n: 5 }] },
   { id: "obj_chaos_everything", label: "Objective: CHAOS - hit as many weird piece families as possible", steps: [{ kind: "pieceRun", blockType: "Pipe", n: 3 }, { kind: "pieceRun", blockType: "HalfPipeWide", n: 3 }, { kind: "pieceRun", blockType: "WallRideLeft", n: 3 }, { kind: "pieceRun", blockType: "Corkscrew", n: 3 }, { kind: "pieceRun", blockType: "LoopHalf", n: 3 }, { kind: "pieceRun", blockType: "Booster", n: 3 }, { kind: "pieceRun", blockType: "JumpRamp", n: 3 }, { kind: "pieceRun", blockType: "StuntRamp", n: 3 }, { kind: "pieceRun", blockType: "CurveBankWide", n: 3 }, { kind: "pieceRun", blockType: "Helix", n: 3, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 3, dyPerPiece: -1 }, { kind: "straight", n: 6 }] },
 
@@ -420,6 +597,50 @@ export function generateManualMiniTrack(params = {}) {
 
   const scenario = getScenario(scenarioId);
 
+  if (scenario.tubeReferenceRecipe) {
+    const recipe = scenario.tubeReferenceRecipe;
+    const parts = buildPartsFromTubeReferenceRecipe(scenario.tubeReferenceRecipe);
+    for (const p of parts) {
+      trackData.addPart(
+        p.x,
+        p.y,
+        p.z,
+        p.blockType,
+        p.rotation,
+        p.rotAxis ?? RotationAxis.YPositive,
+        p.color ?? ColorStyle.Default,
+        p.checkpointOrder ?? null,
+        p.startOrder ?? null,
+      );
+      placedSequence.push({
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        blockType: p.blockType,
+        rotation: p.rotation,
+      });
+    }
+
+    const exactTemplate = recipe.kind === "exact" ? getRefTemplate(recipe.templateId) : null;
+    const shareCode = exactTemplate
+      ? exactTemplate.code
+      : (
+        format === "v3"
+          ? encodeV3ShareCode(name, trackData)
+          : encodePolyTrack1ShareCode(name, trackData, "")
+      );
+    return {
+      shareCode,
+      trackData,
+      name,
+      seed: null,
+      placedSequence,
+      anchorTrace,
+      manualScenarioId: scenarioId,
+      manualScenarioLabel: scenario.label,
+    };
+  }
+
   let x = 0, y = 0, z = 0;
   let heading = 0; // 0=N, 1=W, 2=S, 3=E (matches HEADING_DELTA)
   let checkpointIdx = 0;
@@ -474,63 +695,6 @@ export function generateManualMiniTrack(params = {}) {
         move(heading, 1);
         assertGrid();
         anchorTrace.push({ label: "Straight", ...b, rotation: heading, after: { x, y, z, heading } });
-      }
-      continue;
-    }
-
-    if (step.kind === "tubeStraight") {
-      const n = Number.isFinite(step.n) ? Math.max(1, Math.floor(step.n)) : 1;
-      const blockType = step.blockType === "open" ? BlockType.TubeOpen : BlockType.Pipe;
-      for (let i = 0; i < n; i++) {
-        const b = { x, y, z, heading };
-        add(blockType, heading);
-        move(heading, 1);
-        assertGrid();
-        anchorTrace.push({ label: BlockTypeName[blockType] || blockType, ...b, rotation: heading, after: { x, y, z, heading } });
-      }
-      continue;
-    }
-
-    if (step.kind === "tubeTurn") {
-      const turnRight = step.dir === "R";
-      const blockType = turnRight ? BlockType.CorkRight : BlockType.CorkLeft;
-      const rotation = turnRight ? heading : ((heading + 3) % 4);
-      add(blockType, rotation);
-      heading = turnRight ? ((heading + 3) % 4) : ((heading + 1) % 4);
-      move(heading, 1);
-      assertGrid();
-      anchorTrace.push({
-        label: `${BlockTypeName[blockType] || blockType} ${turnRight ? "(R)" : "(L)"}`,
-        ...before,
-        rotation,
-        after: { x, y, z, heading },
-      });
-      continue;
-    }
-
-    if (step.kind === "tubeUp") {
-      const n = Number.isFinite(step.n) ? Math.max(1, Math.floor(step.n)) : 1;
-      for (let i = 0; i < n; i++) {
-        const b = { x, y, z, heading };
-        add(BlockType.SpiralUp, heading);
-        move(heading, 1);
-        y += 1;
-        assertGrid();
-        anchorTrace.push({ label: "SpiralUp", ...b, rotation: heading, after: { x, y, z, heading } });
-      }
-      continue;
-    }
-
-    if (step.kind === "tubeDown") {
-      const n = Number.isFinite(step.n) ? Math.max(1, Math.floor(step.n)) : 1;
-      for (let i = 0; i < n; i++) {
-        if (y < 1) throw new Error("tubeDown would go below ground");
-        const b = { x, y, z, heading };
-        add(BlockType.SpiralDown, heading);
-        move(heading, 1);
-        y -= 1;
-        assertGrid();
-        anchorTrace.push({ label: "SpiralDown", ...b, rotation: heading, after: { x, y, z, heading } });
       }
       continue;
     }
