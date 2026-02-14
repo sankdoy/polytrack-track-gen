@@ -23,6 +23,14 @@ export const BlockType = {
   HalfBlock: 53,
   QuarterBlock: 54,
   TurnLong3: 83,
+  Pipe: 28,
+  WallRideLeft: 49,
+  WallRideRight: 50,
+  CorkLeft: 45,
+  CorkRight: 46,
+  SpiralUp: 62,
+  SpiralDown: 63,
+  TubeOpen: 64,
 };
 
 export const Environment = {
@@ -288,6 +296,13 @@ export const manualMiniTrackScenarios = [
   { id: "turnShortL", label: "TurnShort L: straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
   { id: "turnShortS", label: "TurnShort S: straight×2 → TurnShort(R) → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
 
+  // Tube logic probes.
+  { id: "tubeStraight", label: "Tube Straight: pipe×14", steps: [{ kind: "tubeStraight", n: 14 }] },
+  { id: "tubeTurnL", label: "Tube Left Turn: pipe×4 → corkLeft → pipe×10", steps: [{ kind: "tubeStraight", n: 4 }, { kind: "tubeTurn", dir: "L" }, { kind: "tubeStraight", n: 10 }] },
+  { id: "tubeTurnR", label: "Tube Right Turn: pipe×4 → corkRight → pipe×10", steps: [{ kind: "tubeStraight", n: 4 }, { kind: "tubeTurn", dir: "R" }, { kind: "tubeStraight", n: 10 }] },
+  { id: "tubeUp", label: "Tube Up Turn: pipe×3 → spiralUp×6 → tubeOpen×4", steps: [{ kind: "tubeStraight", n: 3 }, { kind: "tubeUp", n: 6 }, { kind: "tubeStraight", n: 4, blockType: "open" }] },
+  { id: "tubeDown", label: "Tube Down Turn: pipe×3 → spiralUp×4 → spiralDown×4 → tubeOpen×4", steps: [{ kind: "tubeStraight", n: 3 }, { kind: "tubeUp", n: 4 }, { kind: "tubeDown", n: 4 }, { kind: "tubeStraight", n: 4, blockType: "open" }] },
+
   // Comprehensive: all turn types + jumps in one track.
   { id: "allTurnsJumps", label: "All turns + jumps", steps: [
     // Jump 1: totalFlat=6 (5 str + start) → gap=31wu ≈ 8 tiles
@@ -388,6 +403,63 @@ export function generateManualMiniTrack(params = {}) {
         move(heading, 1);
         assertGrid();
         anchorTrace.push({ label: "Straight", ...b, rotation: heading, after: { x, y, z, heading } });
+      }
+      continue;
+    }
+
+    if (step.kind === "tubeStraight") {
+      const n = Number.isFinite(step.n) ? Math.max(1, Math.floor(step.n)) : 1;
+      const blockType = step.blockType === "open" ? BlockType.TubeOpen : BlockType.Pipe;
+      for (let i = 0; i < n; i++) {
+        const b = { x, y, z, heading };
+        add(blockType, heading);
+        move(heading, 1);
+        assertGrid();
+        anchorTrace.push({ label: BlockTypeName[blockType] || blockType, ...b, rotation: heading, after: { x, y, z, heading } });
+      }
+      continue;
+    }
+
+    if (step.kind === "tubeTurn") {
+      const turnRight = step.dir === "R";
+      const blockType = turnRight ? BlockType.CorkRight : BlockType.CorkLeft;
+      const rotation = turnRight ? heading : ((heading + 3) % 4);
+      add(blockType, rotation);
+      heading = turnRight ? ((heading + 3) % 4) : ((heading + 1) % 4);
+      move(heading, 1);
+      assertGrid();
+      anchorTrace.push({
+        label: `${BlockTypeName[blockType] || blockType} ${turnRight ? "(R)" : "(L)"}`,
+        ...before,
+        rotation,
+        after: { x, y, z, heading },
+      });
+      continue;
+    }
+
+    if (step.kind === "tubeUp") {
+      const n = Number.isFinite(step.n) ? Math.max(1, Math.floor(step.n)) : 1;
+      for (let i = 0; i < n; i++) {
+        const b = { x, y, z, heading };
+        add(BlockType.SpiralUp, heading);
+        move(heading, 1);
+        y += 1;
+        assertGrid();
+        anchorTrace.push({ label: "SpiralUp", ...b, rotation: heading, after: { x, y, z, heading } });
+      }
+      continue;
+    }
+
+    if (step.kind === "tubeDown") {
+      const n = Number.isFinite(step.n) ? Math.max(1, Math.floor(step.n)) : 1;
+      for (let i = 0; i < n; i++) {
+        if (y < 1) throw new Error("tubeDown would go below ground");
+        const b = { x, y, z, heading };
+        add(BlockType.SpiralDown, heading);
+        move(heading, 1);
+        y -= 1;
+        assertGrid();
+        anchorTrace.push({ label: "SpiralDown", ...b, rotation: heading, after: { x, y, z, heading } });
       }
       continue;
     }
