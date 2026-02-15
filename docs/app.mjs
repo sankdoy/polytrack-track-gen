@@ -1,4 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-15-standard-fix-v7";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-15-seam-compact-v9";
 
 const $ = (id) => document.getElementById(id);
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";

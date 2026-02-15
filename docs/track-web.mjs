@@ -350,7 +350,8 @@ const V3_CHECKPOINT_ORDER_BLOCKS = [BlockType.Checkpoint];
 
 function serializeV3Format(trackData) {
   const bytes = [];
-  for (const [blockType, parts] of trackData.parts) {
+  const sortedParts = Array.from(trackData.parts.entries()).sort((a, b) => a[0] - b[0]);
+  for (const [blockType, parts] of sortedParts) {
     bytes.push(blockType & 255, (blockType >> 8) & 255);
     const count = parts.length;
     bytes.push(count & 255, (count >> 8) & 255, (count >> 16) & 255, (count >> 24) & 255);
@@ -500,25 +501,26 @@ export const manualMiniTrackScenarios = [
   },
   {
     id: "tube_ref_lrlr_x2_closer_coupled_v2",
-    label: "Tube Ref Objective: two chained L-R-L-R modules (closer-coupled seam probe)",
+    label: "Tube Ref Objective: compact segment seam probe (2-module offset)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_lrlr_fixed_base", dropFinish: true },
-        // Shift second module left by 1/2 tile and back by 1/4 tile for seam alignment.
-        { templateId: "tube_lrlr_fixed_base", dx: 35, dz: 41, dropStart: true },
+        { templateId: "tube_ref_segment_exact", dropFinish: true },
+        // Small seam-only offset (left 1/2 tile, back 1/4 tile).
+        { templateId: "tube_ref_segment_exact", dx: -2, dz: -1, dropStart: true },
       ],
     },
   },
   {
     id: "tube_ref_lrlr_x3_gap_patch_stress_v2",
-    label: "Tube Ref Objective: three chained L-R-L-R modules (post-fix seam stress)",
+    label: "Tube Ref Objective: compact turn seam stress (L-R chain with offset)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_lrlr_x3_gap_patch_fixed_base", dropFinish: true },
-        // Continue with a right-exit settle to check downstream alignment.
-        { templateId: "tube_ref_right_exact", dx: 124, dz: 136, dropStart: true },
+        { templateId: "tube_ref_left_exact", dropFinish: true },
+        { templateId: "tube_ref_right_exact", dropStart: true, dropFinish: true, dx: 18, dz: 20 },
+        // Third compact module with slight seam delta to stress continuity.
+        { templateId: "tube_ref_left_exact", dropStart: true, dx: 34, dz: 39 },
       ],
     },
   },
@@ -975,7 +977,9 @@ export function generateTrack(params = {}) {
   const turnProb = allowTurns ? baseTurnProb : 0;
   const intersectionProb = Math.max(0, Math.min(1, intersectionChance));
   const jumpProb = Math.max(0, Math.min(1, jumpChance));
-  const templateProb = 0; // Pattern queue currently disabled in simplified mode.
+  // Keep templates subtle but active so tracks feel authored instead of random soup.
+  const templateProbBase = 0.05 + (curviness * 0.01) + (elevation * 0.006);
+  const templateProb = Math.max(0.05, Math.min(0.20, allowTurns ? templateProbBase : (templateProbBase * 0.7)));
   const maxHeightY = Math.max(0, Math.floor(maxHeight));
   const attemptsPerPiece = Math.max(1, Math.floor(maxAttemptsPerPiece));
 
@@ -1190,41 +1194,82 @@ export function generateTrack(params = {}) {
   const BIAS_SWITCH_INTERVAL = 3 + Math.floor(rng() * 5);
 
   // ---- Templates from real track patterns ----
-  const templates = [
-    // Straight runs
-    ["straight", "straight", "straight"],
-    ["straight", "straight", "straight", "straight", "straight"],
-    // Chicane (S-shape from turns)
-    ["turnR", "straight", "turnL"],
-    ["turnL", "straight", "turnR"],
-    ["turnR", "straight", "straight", "turnL"],
-    ["turnL", "straight", "straight", "turnR"],
-    // Hill patterns
-    ["up", "straight", "down"],
-    ["up", "up", "straight", "down", "down"],
-    ["up", "up", "up", "down", "down", "down"],
-    ["up", "steepUp", "straight", "down", "down"],
-    // Hill with turn at top
-    ["up", "up", "turnR", "down", "down"],
-    ["up", "up", "turnL", "down", "down"],
-    // Sweeping curves
-    ["turnR", "turnR", "straight", "straight"],
-    ["turnL", "turnL", "straight", "straight"],
-    ["straight", "turnR", "straight", "turnR"],
-    ["straight", "turnL", "straight", "turnL"],
-    // U-turn
-    ["turnR", "turnR"],
-    ["turnL", "turnL"],
-    // Long gentle slopes
-    ["upLong", "straight", "straight", "downLong"],
-    ["upLong", "upLong", "downLong", "downLong"],
-    // Mixed elevation + turn
-    ["up", "turnR", "straight", "down"],
-    ["up", "turnL", "straight", "down"],
-    ["straight", "up", "straight", "turnR", "down", "straight"],
-    // Jumps (handled as compound actions)
-    ["jump"],
-  ];
+  const templateGroups = {
+    straight: [
+      ["straight", "straight", "straight"],
+      ["straight", "straight", "straight", "straight", "straight"],
+    ],
+    curves: [
+      // Chicane (S-shape from turns)
+      ["turnR", "straight", "turnL"],
+      ["turnL", "straight", "turnR"],
+      ["turnR", "straight", "straight", "turnL"],
+      ["turnL", "straight", "straight", "turnR"],
+      // Sweeping curves
+      ["turnR", "turnR", "straight", "straight"],
+      ["turnL", "turnL", "straight", "straight"],
+      ["straight", "turnR", "straight", "turnR"],
+      ["straight", "turnL", "straight", "turnL"],
+      // U-turn
+      ["turnR", "turnR"],
+      ["turnL", "turnL"],
+    ],
+    elevation: [
+      // Hill patterns
+      ["up", "straight", "down"],
+      ["up", "up", "straight", "down", "down"],
+      ["up", "up", "up", "down", "down", "down"],
+      ["up", "steepUp", "straight", "down", "down"],
+      // Long gentle slopes
+      ["upLong", "straight", "straight", "downLong"],
+      ["upLong", "upLong", "downLong", "downLong"],
+    ],
+    mixed: [
+      // Mixed elevation + turn
+      ["up", "turnR", "straight", "down"],
+      ["up", "turnL", "straight", "down"],
+      ["straight", "up", "straight", "turnR", "down", "straight"],
+    ],
+    jumps: [
+      ["jump"],
+    ],
+  };
+
+  const weightedChoice = (items) => {
+    let total = 0;
+    for (const i of items) total += i.weight;
+    if (total <= 0) return null;
+    let r = rng() * total;
+    for (const i of items) {
+      r -= i.weight;
+      if (r <= 0) return i;
+    }
+    return items[items.length - 1] || null;
+  };
+
+  const pickTemplateSequence = () => {
+    const tightCurveMode = normalizedTurnStyle === "tight";
+    const sweepingMode = normalizedTurnStyle === "long_only";
+    const noTurnMode = !allowTurns;
+
+    const wStraight = Math.max(0.2, 1.2 - (curviness * 0.10));
+    const wCurves = noTurnMode ? 0 : Math.max(0.2, 0.4 + (curviness * 0.15) + (tightCurveMode ? 0.8 : 0) - (sweepingMode ? 0.35 : 0));
+    const wElevation = Math.max(0.2, 0.4 + (elevation * 0.18));
+    const wMixed = noTurnMode ? 0 : Math.max(0.1, 0.2 + (elevation * 0.08) + (curviness * 0.08));
+    const wJumps = jumpProb > 0 ? Math.max(0.05, jumpProb * 1.6) : 0;
+
+    const groupPick = weightedChoice([
+      { key: "straight", weight: wStraight },
+      { key: "curves", weight: wCurves },
+      { key: "elevation", weight: wElevation },
+      { key: "mixed", weight: wMixed },
+      { key: "jumps", weight: wJumps },
+    ]);
+    if (!groupPick) return null;
+    const group = templateGroups[groupPick.key];
+    if (!group?.length) return null;
+    return group[Math.floor(rng() * group.length)] || null;
+  };
   const actionQueue = [];
 
   // ---- Piece placement functions ----
@@ -1642,50 +1687,16 @@ export function generateTrack(params = {}) {
 
   let piecesPlaced = 0;
   let consecutiveStraight = 0;
-  let justPlacedPiece = false; // Skip escape logic for one cycle after placement
 
   for (let i = 0; i < trackLength; i++) {
-    // Skip escape logic immediately after placement; next iteration will use new x,y,z
-    if (!justPlacedPiece && !isFree(x, y, z)) {
+    // Never "teleport" cursor out of collisions: either legally pass through a converted
+    // intersection cell, or stop generation and finalize what we already built.
+    if (!isFree(x, y, z)) {
       if (hasAnchor(x, y, z) && ensureIntersectionCrossAtCell(x, y, z, heading)) {
         ({ x, y, z } = nextPos(x, y, z, heading, 1));
         continue;
       }
-      // Try to escape: multiple strategies
-      let escaped = false;
-      // Strategy 1: turn left or right
-      for (const dir of [1, 3]) {
-        const tryHeading = (heading + dir) % 4;
-        const tryExit = nextPos(x, y, z, tryHeading, 1);
-        if (isFree(tryExit.x, tryExit.y, tryExit.z)) {
-          heading = tryHeading;
-          ({ x, y, z } = tryExit);
-          escaped = true;
-          break;
-        }
-      }
-      // Strategy 2: go up/down at current position
-      if (!escaped) {
-        for (const dy of [1, -1]) {
-          const tryY = y + dy;
-          if (tryY >= 0 && tryY <= maxHeightY && isFree(x, tryY, z)) {
-            y = tryY;
-            escaped = true;
-            break;
-          }
-        }
-      }
-      // Strategy 3: reverse
-      if (!escaped) {
-        const reverseH = (heading + 2) % 4;
-        const tryExit = nextPos(x, y, z, reverseH, 1);
-        if (isFree(tryExit.x, tryExit.y, tryExit.z)) {
-          heading = reverseH;
-          ({ x, y, z } = tryExit);
-          escaped = true;
-        }
-      }
-      if (!escaped) break;
+      break;
     }
 
     // Force remaining checkpoints near the end
@@ -1706,7 +1717,7 @@ export function generateTrack(params = {}) {
       if (shouldCheckpoint && attempt === 0) {
         actionQueue.length = 0;
         placed = placeStraightLike(BlockType.Checkpoint, checkpointsPlaced);
-        if (placed) { checkpointsPlaced++; piecesPlaced++; consecutiveStraight = 0; justPlacedPiece = true; }
+        if (placed) { checkpointsPlaced++; piecesPlaced++; consecutiveStraight = 0; }
         continue;
       }
 
@@ -1714,13 +1725,14 @@ export function generateTrack(params = {}) {
       if (shouldDescend && attempt < 3) {
         if (y >= 2 && allowSteepSlopes) placed = placeSteepDown();
         if (!placed) placed = placeSlopeDown(false);
-        if (placed) { piecesPlaced++; consecutiveStraight = 0; justPlacedPiece = true; continue; }
+        if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
       }
 
       // Try template on first attempt
       if (attempt === 0 && !shouldCheckpoint && !shouldDescend) {
         if (actionQueue.length === 0 && templateProb > 0 && rng() < templateProb) {
-          actionQueue.push(...templates[Math.floor(rng() * templates.length)]);
+          const template = pickTemplateSequence();
+          if (template?.length) actionQueue.push(...template);
         }
 
         if (actionQueue.length > 0) {
@@ -1742,7 +1754,6 @@ export function generateTrack(params = {}) {
               piecesPlaced += jumpPieces;
               i += jumpPieces - 1;
               consecutiveStraight = 0;
-              justPlacedPiece = true;
               continue;
             }
           }
@@ -1782,7 +1793,6 @@ export function generateTrack(params = {}) {
             piecesPlaced += jumpPieces;
             i += jumpPieces - 1;
             consecutiveStraight = 0;
-            justPlacedPiece = true;
             continue;
           }
         }
@@ -1798,7 +1808,6 @@ export function generateTrack(params = {}) {
             piecesPlaced += detourPieces;
             i += detourPieces - 1;
             consecutiveStraight = 0;
-            justPlacedPiece = true;
             continue;
           }
         }
@@ -1813,17 +1822,15 @@ export function generateTrack(params = {}) {
         placed = placeTurn90(turnRight, variant);
         // If biased direction fails, try the other
         if (!placed) placed = placeTurn90(!turnRight, variant);
-        if (placed) { piecesPlaced++; consecutiveStraight = 0; justPlacedPiece = true; continue; }
+        if (placed) { piecesPlaced++; consecutiveStraight = 0; continue; }
       }
 
       // Default: straight
       placed = placeStraightLike(BlockType.Straight, null);
-      if (placed) { piecesPlaced++; consecutiveStraight++; justPlacedPiece = true; }
+      if (placed) { piecesPlaced++; consecutiveStraight++; }
     }
 
     if (!placed) break;
-    // Reset flag for next iteration; escape logic can now run if needed
-    justPlacedPiece = false;
   }
 
   // ---- Descend to ground before checkpoints/finish ----
