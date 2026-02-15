@@ -491,52 +491,47 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 // Curated active batch (max 4 at a time) for focused manual fix workflow.
 export const manualMiniTrackScenarios = [
   {
-    id: "tube_ref_lrlr_x2_closer_coupled",
+    id: "std_gen_fixed_baseline_ref",
+    label: "Standard Ref Objective: corrected standard-generation baseline (exact reference)",
+    tubeReferenceRecipe: {
+      kind: "exact",
+      templateId: "standard_gen_fixed_baseline_v1",
+    },
+  },
+  {
+    id: "tube_ref_lrlr_x2_closer_coupled_v2",
     label: "Tube Ref Objective: two chained L-R-L-R modules (closer-coupled seam probe)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
         { templateId: "tube_lrlr_fixed_base", dropFinish: true },
-        // Move module closer than baseline delta (40,44) to probe seam coupling.
-        { templateId: "tube_lrlr_fixed_base", dx: 38, dz: 42, dropStart: true },
+        // Shift second module left by 1/2 tile and back by 1/4 tile for seam alignment.
+        { templateId: "tube_lrlr_fixed_base", dx: 37, dz: 42, dropStart: true },
       ],
     },
   },
   {
-    id: "tube_ref_lrlr_x2_patched_bridge",
-    label: "Tube Ref Objective: two chained L-R-L-R modules (patched bridge seam probe)",
-    tubeReferenceRecipe: {
-      kind: "composite",
-      modules: [
-        { templateId: "tube_lrlr_fixed_base", dropFinish: true },
-        // Patch seam corridor before attaching the second module.
-        { templateId: "tube_ref_segment_exact", dx: 36, dz: -4 },
-        { templateId: "tube_ref_segment_exact", dx: 36, dz: 0 },
-        { templateId: "tube_lrlr_fixed_base", dx: 40, dz: 44, dropStart: true },
-      ],
-    },
-  },
-  {
-    id: "tube_ref_lrlr_x3_gap_patch_stress",
-    label: "Tube Ref Objective: three chained L-R-L-R modules (gap-patch seam stress)",
+    id: "tube_ref_lrlr_x3_gap_patch_stress_v2",
+    label: "Tube Ref Objective: three chained L-R-L-R modules (post-fix seam stress)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
         { templateId: "tube_lrlr_x3_gap_patch_fixed_base", dropFinish: true },
-        // Continue with one more right exit to validate end-seam behavior.
-        { templateId: "tube_ref_right_exact", dx: 120, dz: 132, dropStart: true },
+        // Continue with a right-exit settle to check downstream alignment.
+        { templateId: "tube_ref_right_exact", dx: 124, dz: 136, dropStart: true },
       ],
     },
   },
   {
-    id: "wallride_left_scaffold_x3_continuity_probe",
-    label: "Objective: sustained LEFT wall ride scaffold x3 with short tube exit probe",
+    id: "wallride_left_scaffold_x3_continuity_probe_v2",
+    label: "Objective: sustained LEFT wall ride scaffold x3 (continuous, no ground reset)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
         { templateId: "wallride_left_scaffold_x3_fixed_base", dropFinish: true },
         { templateId: "tube_ref_segment_exact", dx: -3, dz: -377 },
-        { templateId: "tube_ref_straight_exact", dx: -1, dz: -381, dropStart: true },
+        { templateId: "tube_ref_segment_exact", dx: -3, dz: -381 },
+        { templateId: "tube_ref_straight_exact", dx: -1, dz: -385, dropStart: true },
       ],
     },
   },
@@ -550,7 +545,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "tube_ref_lrlr_x2_closer_coupled",
+    scenarioId = "std_gen_fixed_baseline_ref",
     name = "Manual Mini Track",
     environment = "Summer",
     format = "polytrack1",
