@@ -491,36 +491,36 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 // Curated active batch (max 4 at a time) for focused manual fix workflow.
 export const manualMiniTrackScenarios = [
   {
-    id: "tube_ref_lrl_left_exit_then_right",
-    label: "Tube Ref Objective: L-R-L-left-exit base then chained RIGHT turn (derived from latest fix)",
+    id: "tube_ref_lrlr_chain_x2",
+    label: "Tube Ref Objective: two chained L-R-L-R modules (corrected seam delta)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_lrl_left_exit_fixed_base", dropFinish: true },
-        { templateId: "tube_ref_right_exact", dx: 40, dz: 28, dropStart: true },
+        { templateId: "tube_lrlr_fixed_base", dropFinish: true },
+        { templateId: "tube_lrlr_fixed_base", dx: 40, dz: 44, dropStart: true },
       ],
     },
   },
   {
-    id: "tube_ref_double_lrl_plus_left_explicit_seam",
-    label: "Tube Ref Objective: L-R-L-L-R-L chain with explicit double-LEFT seam",
+    id: "tube_ref_lrlr_chain_x3",
+    label: "Tube Ref Objective: three chained L-R-L-R modules (seam stress)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_double_lrl_fixed_base", dropFinish: true },
-        { templateId: "tube_ref_left_exact", dx: 56, dz: 12, dropStart: true },
+        { templateId: "tube_lrlr_fixed_base", dropFinish: true },
+        { templateId: "tube_lrlr_fixed_base", dx: 40, dz: 44, dropStart: true, dropFinish: true },
+        { templateId: "tube_lrlr_fixed_base", dx: 80, dz: 88, dropStart: true },
       ],
     },
   },
   {
-    id: "tube_ref_triple_lrl_chain_single_delta",
-    label: "Tube Ref Objective: three L-R-L-left-exit modules chained by single-module delta",
+    id: "tube_ref_lrlr_then_double_lrl_explicit_ll",
+    label: "Tube Ref Objective: L-R-L-R into L-R-L-L-R-L (explicit double-LEFT seam)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_lrl_left_exit_fixed_base", dropFinish: true },
-        { templateId: "tube_lrl_left_exit_fixed_base", dx: 40, dz: 28, dropStart: true, dropFinish: true },
-        { templateId: "tube_lrl_left_exit_fixed_base", dx: 80, dz: 56, dropStart: true },
+        { templateId: "tube_lrlr_fixed_base", dropFinish: true },
+        { templateId: "tube_double_lrl_fixed_base", dx: 40, dz: 44, dropStart: true },
       ],
     },
   },
@@ -546,7 +546,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "tube_ref_lrl_left_exit_then_right",
+    scenarioId = "tube_ref_lrlr_chain_x2",
     name = "Manual Mini Track",
     environment = "Summer",
     format = "polytrack1",
