@@ -506,7 +506,7 @@ export const manualMiniTrackScenarios = [
       modules: [
         { templateId: "tube_lrlr_fixed_base", dropFinish: true },
         // Shift second module left by 1/2 tile and back by 1/4 tile for seam alignment.
-        { templateId: "tube_lrlr_fixed_base", dx: 37, dz: 42, dropStart: true },
+        { templateId: "tube_lrlr_fixed_base", dx: 35, dz: 41, dropStart: true },
       ],
     },
   },
