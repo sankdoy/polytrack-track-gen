@@ -952,16 +952,15 @@ export function generateTrack(params = {}) {
     length: trackLength = 30,
     elevation = 1,
     curviness = 1,
+    turnStyle = "mixed",
     numCheckpoints = 2,
     environment = "Summer",
-    includeScenery = false,
     includePillars = false,
     seed = Date.now(),
     maxHeight = 24,
     maxAttemptsPerPiece = 25,
     allowIntersections = false,
     intersectionChance = 0.15,
-    templateChance = 0.25,
     allowSteepSlopes = true,
     jumpChance = 0.15,
     format = "polytrack1",
@@ -970,11 +969,14 @@ export function generateTrack(params = {}) {
   const rng = createRNG(seed);
   const env = Environment[environment] ?? Environment.Summer;
 
+  const normalizedTurnStyle = String(turnStyle || "mixed");
+  const allowTurns = normalizedTurnStyle !== "none";
   const elevationProb = Math.max(0, Math.min(0.8, elevation * 0.08));
-  const turnProb = Math.max(0, Math.min(0.8, curviness * 0.09));
+  const baseTurnProb = Math.max(0, Math.min(0.8, curviness * 0.09));
+  const turnProb = allowTurns ? baseTurnProb : 0;
   const intersectionProb = Math.max(0, Math.min(1, intersectionChance));
   const jumpProb = Math.max(0, Math.min(1, jumpChance));
-  const templateProb = Math.max(0, Math.min(1, templateChance));
+  const templateProb = 0; // Pattern queue currently disabled in simplified mode.
   const maxHeightY = Math.max(0, Math.floor(maxHeight));
   const attemptsPerPiece = Math.max(1, Math.floor(maxAttemptsPerPiece));
 
@@ -1613,6 +1615,14 @@ export function generateTrack(params = {}) {
 
   // Weighted turn type selection
   const pickTurnVariant = () => {
+    if (!allowTurns) return "long";
+    if (normalizedTurnStyle === "long_only") return "long";
+    if (normalizedTurnStyle === "tight") {
+      const r = rng();
+      if (r < 0.45) return "short";
+      if (r < 0.85) return "sharp";
+      return "long";
+    }
     const r = rng();
     if (r < 0.40) return "short";
     if (r < 0.70) return "sharp";
@@ -1797,8 +1807,8 @@ export function generateTrack(params = {}) {
 
       // Turns - use bias for flowing curves
       // Also force a turn if we've had too many straight pieces
-      const forceTurn = consecutiveStraight >= 5 + Math.floor(rng() * 4);
-      if (!placed && (forceTurn || (turnProb > 0 && rng() < turnProb))) {
+      const forceTurn = allowTurns && consecutiveStraight >= 5 + Math.floor(rng() * 4);
+      if (!placed && allowTurns && (forceTurn || (turnProb > 0 && rng() < turnProb))) {
         const variant = pickTurnVariant();
         const turnRight = pickTurnDirection();
         placed = placeTurn90(turnRight, variant);
@@ -1934,100 +1944,7 @@ export function generateTrack(params = {}) {
     }
   }
 
-  // ---- Scenery ----
-  // Structured decorations: trees, buildings, and roadside barriers.
-  // Color values are byte indices into the game's palette (user-tested in-game).
-  if (includeScenery) {
-    const SCENERY_COLORS = {
-      trunk: 8,    // brown-ish (to be verified in-game)
-      leaves: 3,   // green-ish
-      stone: 1,    // gray
-      brick: 6,    // red/brown
-      roof: 2,     // darker
-      barrier: 5,  // yellow/orange
-    };
-
-    const roadPositions = [];
-    for (const [t, parts] of trackData.parts) {
-      if (
-        t === BlockType.Block || t === BlockType.HalfBlock || t === BlockType.QuarterBlock ||
-        t === BlockType.PillarTop || t === BlockType.Pillar || t === BlockType.PillarBase
-      ) continue;
-      for (const p of parts) roadPositions.push({ x: p.x, y: p.y, z: p.z });
-    }
-
-    const addScenery = (sx, sy, sz, blockType, color) => {
-      if (!canReserveAt(sx, sz, sy, sy)) return false;
-      const rot = Math.floor(rng() * 4);
-      trackData.addPart(sx, sy, sz, blockType, rot, RotationAxis.YPositive, color, null, null);
-      reserveAt(sx, sz, sy, sy, blockType);
-      return true;
-    };
-
-    const placeTree = (bx, by, bz) => {
-      // Trunk: 1-2 Block pieces stacked
-      const trunkHeight = 1 + Math.floor(rng() * 2);
-      for (let ty = 0; ty < trunkHeight; ty++) {
-        if (!addScenery(bx, by + ty, bz, BlockType.Block, SCENERY_COLORS.trunk)) return;
-      }
-      // Canopy: 1-2 HalfBlock or QuarterBlock on top
-      const canopyTop = by + trunkHeight;
-      addScenery(bx, canopyTop, bz, BlockType.Block, SCENERY_COLORS.leaves);
-      // Side leaves (randomly 1-2 directions)
-      const dirs = [{ dx: TILE, dz: 0 }, { dx: -TILE, dz: 0 }, { dx: 0, dz: TILE }, { dx: 0, dz: -TILE }];
-      for (const d of dirs) {
-        if (rng() < 0.5) {
-          const leafType = rng() < 0.5 ? BlockType.HalfBlock : BlockType.QuarterBlock;
-          addScenery(bx + d.dx, canopyTop, bz + d.dz, leafType, SCENERY_COLORS.leaves);
-        }
-      }
-    };
-
-    const placeBuilding = (bx, by, bz) => {
-      const height = 2 + Math.floor(rng() * 3); // 2-4 stories
-      const wallColor = rng() < 0.5 ? SCENERY_COLORS.stone : SCENERY_COLORS.brick;
-      for (let ty = 0; ty < height; ty++) {
-        if (!addScenery(bx, by + ty, bz, BlockType.Block, wallColor)) return;
-      }
-      // Roof
-      addScenery(bx, by + height, bz, BlockType.HalfBlock, SCENERY_COLORS.roof);
-    };
-
-    const placeBarrier = (bx, by, bz) => {
-      addScenery(bx, by, bz, BlockType.QuarterBlock, SCENERY_COLORS.barrier);
-    };
-
-    // Offsets: 2 tiles away from track on each side
-    const sideOffsets = [
-      { dx: TILE * 2, dz: 0 }, { dx: -TILE * 2, dz: 0 },
-      { dx: 0, dz: TILE * 2 }, { dx: 0, dz: -TILE * 2 },
-    ];
-
-    for (const pos of roadPositions) {
-      if (pos.y > 0) continue; // Only place scenery at ground level
-
-      for (const off of sideOffsets) {
-        const sx = pos.x + off.dx;
-        const sz = pos.z + off.dz;
-        if (!canReserveAt(sx, sz, pos.y, pos.y)) continue;
-
-        const r = rng();
-        if (r < 0.04) {
-          // Tree (~4% chance per side)
-          placeTree(sx, pos.y, sz);
-        } else if (r < 0.06) {
-          // Building (~2% chance per side)
-          placeBuilding(sx, pos.y, sz);
-        } else if (r < 0.10) {
-          // Barrier (~4% chance per side, closer to track)
-          const bx = pos.x + off.dx / 2; // 1 tile offset instead of 2
-          const bz = pos.z + off.dz / 2;
-          placeBarrier(bx, pos.y, bz);
-        }
-        // ~90% nothing - keeps it clean
-      }
-    }
-  }
+  // Scenery generation is intentionally disabled for now.
 
   const shareCode =
     format === "v3"

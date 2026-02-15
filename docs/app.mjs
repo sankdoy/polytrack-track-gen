@@ -1,5 +1,4 @@
-import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-15-test-batch-4c";
-import { generateWipTrack } from "./track-wip.mjs?v=2026-02-14";
+import { generateTrack, generateManualMiniTrack, manualMiniTrackScenarios, BlockTypeName } from "./track-web.mjs?v=2026-02-15-simple-settings";
 
 const $ = (id) => document.getElementById(id);
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
@@ -7,6 +6,7 @@ const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
 function bindRange(id, formatter) {
   const el = $(id);
   const val = $(id + "Val");
+  if (!el || !val) return;
   const fmt = formatter || ((v) => v);
   const update = () => { if (val) val.textContent = fmt(el.value); };
   el.addEventListener("input", update);
@@ -30,22 +30,51 @@ function copyText(text) {
   return navigator.clipboard.writeText(text);
 }
 
+function checkpointCountFromDensity(length, densityPercent) {
+  const safeLength = Math.max(10, Math.floor(Number(length) || 10));
+  const safeDensity = Math.max(0, Math.min(100, Number(densityPercent) || 0));
+  const maxCheckpoints = Math.max(0, Math.floor(safeLength / 8));
+  return Math.round((maxCheckpoints * safeDensity) / 100);
+}
+
+function updateCheckpointDensityDisplay() {
+  const densityEl = $("checkpointDensity");
+  const densityValEl = $("checkpointDensityVal");
+  const lengthEl = $("length");
+  if (!densityEl || !densityValEl || !lengthEl) return;
+  const density = Number(densityEl.value) || 0;
+  const cpCount = checkpointCountFromDensity(lengthEl.value, density);
+  densityValEl.textContent = `${density}% (~${cpCount})`;
+}
+
+function mapElevationProfile(profile) {
+  switch (profile) {
+    case "grounded": return 0;
+    case "rolling": return 3;
+    case "mountain": return 6;
+    case "skyline": return 10;
+    default: return 3;
+  }
+}
+
+function mapCurvinessProfile(profile) {
+  switch (profile) {
+    case "laser": return { curviness: 0, turnStyle: "none" };
+    case "sweeping": return { curviness: 3, turnStyle: "long_only" };
+    case "curvy": return { curviness: 6, turnStyle: "mixed" };
+    case "roundabout": return { curviness: 9, turnStyle: "tight" };
+    default: return { curviness: 4, turnStyle: "mixed" };
+  }
+}
+
 if (hasDOM) {
   bindRange("length");
-  bindRange("elevation");
-  bindRange("curviness");
-  bindRange("checkpoints");
+  bindRange("checkpointDensity");
   bindRange("maxHeight");
   bindRange("maxAttemptsPerPiece");
-  bindRange("templateChance", (v) => Number(v).toFixed(2));
-  bindRange("jumpChance", (v) => Number(v).toFixed(2));
-  bindRange("wipLength");
-  bindRange("wipComplexity");
-  bindRange("wipSceneryDensity");
-  bindRange("wipJumpScale");
-  bindRange("wipElevation");
-  bindRange("wipCurviness");
-  bindRange("wipCheckpoints");
+  updateCheckpointDensityDisplay();
+  $("length")?.addEventListener("input", updateCheckpointDensityDisplay);
+  $("checkpointDensity")?.addEventListener("input", updateCheckpointDensityDisplay);
 
   // Populate test scenario dropdown
   const testScenarioEl = $("testScenario");
@@ -68,29 +97,30 @@ if (hasDOM) {
     $("seed").value = String(Math.floor(Math.random() * 1_000_000));
   });
 
-  $("wipRollSeed")?.addEventListener("click", () => {
-    $("wipSeed").value = String(Math.floor(Math.random() * 1_000_000));
-  });
-
 function readParams() {
   const seedRaw = $("seed").value.trim();
   const seed = seedRaw ? Number(seedRaw) : Date.now();
+  const length = Math.min(750, Math.max(10, Number($("length").value)));
+  const checkpointDensity = Number($("checkpointDensity").value);
+  const numCheckpoints = checkpointCountFromDensity(length, checkpointDensity);
+  const { curviness, turnStyle } = mapCurvinessProfile($("curvinessProfile").value);
+  const includeJumps = !!$("includeJumps")?.checked;
+  const includeIntersections = !!$("includeIntersections")?.checked;
   return {
     name: $("name").value || "Generated Track",
-    length: Math.min(750, Math.max(10, Number($("length").value))),
-    elevation: Number($("elevation").value),
-    curviness: Number($("curviness").value),
-    numCheckpoints: Number($("checkpoints").value),
+    length,
+    elevation: mapElevationProfile($("elevationProfile").value),
+    curviness,
+    turnStyle,
+    numCheckpoints,
     environment: $("environment").value,
-    includeScenery: $("scenery").checked,
     includePillars: $("pillars")?.checked || false,
     maxHeight: Number($("maxHeight").value),
     maxAttemptsPerPiece: Number($("maxAttemptsPerPiece").value),
     allowSteepSlopes: $("allowSteepSlopes").checked,
-    allowIntersections: $("allowIntersections").checked,
-    intersectionChance: 0.3, // fixed internal value when intersections enabled
-    templateChance: Number($("templateChance").value),
-    jumpChance: Number($("jumpChance").value),
+    allowIntersections: includeIntersections,
+    intersectionChance: includeIntersections ? 0.3 : 0,
+    jumpChance: includeJumps ? 0.2 : 0,
     format: "polytrack1",
     seed,
   };
@@ -240,60 +270,10 @@ function generateTestTrack() {
   }
 }
 
-function readWipParams() {
-  const seedRaw = $("wipSeed")?.value.trim();
-  const seed = seedRaw ? Number(seedRaw) : Date.now();
-  return {
-    name: $("name")?.value ? `${$("name").value} (WIP)` : "WIP Track",
-    length: Math.max(20, Math.min(300, Number($("wipLength")?.value || 80))),
-    elevation: Number($("wipElevation")?.value || 4),
-    curviness: Number($("wipCurviness")?.value || 4),
-    numCheckpoints: Number($("wipCheckpoints")?.value || 2),
-    environment: $("wipEnvironment")?.value || "Summer",
-    includeScenery: $("wipScenery")?.checked ?? true,
-    useExoticBlocks: $("wipExotic")?.checked ?? true,
-    complexity: Number($("wipComplexity")?.value || 6),
-    sceneryDensity: Number($("wipSceneryDensity")?.value || 5),
-    jumpScale: Number($("wipJumpScale")?.value || 5),
-    format: "polytrack1",
-    seed,
-  };
-}
-
-function generateWip() {
-  const btn = $("wipGenerateBtn");
-  if (!btn) return;
-
-  btn.disabled = true;
-  setStatus("wipStatus", "Generating...");
-
-  try {
-    const params = readWipParams();
-    const r = generateWipTrack(params);
-    renderResults($("wipResults"), [{
-      name: r.name,
-      seed: r.seed,
-      shareCode: r.shareCode,
-      details: summarizeResult(r),
-    }], "wipStatus");
-    setStatus("wipStatus", "WIP track generated", "good");
-  } catch (e) {
-    setStatus("wipStatus", e?.message || String(e), "bad");
-  } finally {
-    btn.disabled = false;
-  }
-}
-
   $("generateBtn").addEventListener("click", generateBatch);
   $("testGenerateBtn")?.addEventListener("click", generateTestTrack);
-  $("wipGenerateBtn")?.addEventListener("click", generateWip);
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
-    const target = e.target;
-    if (target && (target.id?.startsWith("wip") || target.closest?.("#wipResults"))) {
-      if (!$("wipGenerateBtn")?.disabled) generateWip();
-      return;
-    }
     if (!$("generateBtn").disabled) generateBatch();
   });
 }

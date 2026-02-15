@@ -509,7 +509,7 @@
           <h2>Parameters</h2>
 
           <details open>
-            <summary>Basics</summary>
+            <summary>Standard Settings</summary>
             <div class="accordionBody">
               <div class="field">
                 <label>Length <span class="val" id="lengthVal">500</span></label>
@@ -517,18 +517,28 @@
               </div>
 
               <div class="field">
-                <label>Elevation (0-10) <span class="val" id="elevationVal">3</span></label>
-                <input type="range" id="elevation" min="0" max="10" value="3" />
+                <label>Checkpoint Density <span class="val" id="checkpointDensityVal">20% (~12)</span></label>
+                <input type="range" id="checkpointDensity" min="0" max="100" value="20" step="1" />
               </div>
 
               <div class="field">
-                <label>Curviness (0-10) <span class="val" id="curvinessVal">4</span></label>
-                <input type="range" id="curviness" min="0" max="10" value="4" />
+                <label>Elevation Profile</label>
+                <select id="elevationProfile">
+                  <option value="grounded">Grounded Cruise (mostly flat)</option>
+                  <option value="rolling" selected>Rolling Hills</option>
+                  <option value="mountain">Mountain Route</option>
+                  <option value="skyline">Skyline Climb</option>
+                </select>
               </div>
 
               <div class="field">
-                <label>Checkpoints <span class="val" id="checkpointsVal">6</span></label>
-                <input type="range" id="checkpoints" min="0" max="500" value="6" step="1" />
+                <label>Curviness Profile</label>
+                <select id="curvinessProfile">
+                  <option value="laser">Laser Line (dead straight)</option>
+                  <option value="sweeping">Sweeping Arcs (long turns only)</option>
+                  <option value="curvy" selected>Curvy Flow</option>
+                  <option value="roundabout">Roundabout Madness</option>
+                </select>
               </div>
 
               <div class="field">
@@ -542,13 +552,13 @@
               </div>
 
               <div class="checkbox">
-                <input type="checkbox" id="scenery" />
-                <span>Include scenery (trees, buildings)</span>
+                <input type="checkbox" id="includeJumps" checked />
+                <span>Include jumps (fixed 20% chance)</span>
               </div>
 
               <div class="checkbox">
-                <input type="checkbox" id="pillars" />
-                <span>Pillars (supports)</span>
+                <input type="checkbox" id="includeIntersections" />
+                <span>Include self intersections (fixed 30% chance when possible)</span>
               </div>
             </div>
           </details>
@@ -572,18 +582,8 @@
               </div>
 
               <div class="checkbox">
-                <input type="checkbox" id="allowIntersections" />
-                <span>Allow intersections (track crosses itself)</span>
-              </div>
-
-              <div class="field">
-                <label>Pattern Chance <span class="val" id="templateChanceVal">0.35</span></label>
-                <input type="range" id="templateChance" min="0" max="1" value="0.35" step="0.01" />
-              </div>
-
-              <div class="field">
-                <label>Jump Chance <span class="val" id="jumpChanceVal">0.15</span></label>
-                <input type="range" id="jumpChance" min="0" max="1" value="0.15" step="0.01" />
+                <input type="checkbox" id="pillars" />
+                <span>Pillars (supports)</span>
               </div>
             </div>
           </details>
@@ -602,7 +602,7 @@
             <summary>Test Tracks</summary>
             <div class="accordionBody">
               <p style="color:var(--muted);font-size:0.82rem;margin-bottom:10px;">
-                Generate specific test scenarios for debugging alignment, jumps, turns, reference-derived tube logic, and exotic edge cases.
+                Generate specific test scenarios for debugging alignment, jumps, turns, and reference-derived tube logic.
               </p>
               <div class="field">
                 <label>Scenario</label>
@@ -611,70 +611,6 @@
               <button class="btn btn-secondary" id="testGenerateBtn" type="button">Generate Test Track</button>
               <div class="status" id="testStatus"></div>
               <div id="testResults" style="margin-top:10px;"></div>
-            </div>
-          </details>
-
-          <details>
-            <summary>Work in Progress (Experimental)</summary>
-            <div class="accordionBody">
-              <p style="color:var(--muted);font-size:0.82rem;margin-bottom:10px;">
-                Experimental generator with exotic blocks, loops, tunnels, wall rides, colored scenery, and more.
-                Tracks may be broken &mdash; help us test!
-              </p>
-
-              <div class="row" style="gap:10px;flex-wrap:wrap;">
-                <div class="field" style="flex:1;min-width:120px;">
-                  <label for="wipSeed">Seed</label>
-                  <div style="display:flex;gap:6px;">
-                    <input id="wipSeed" type="number" style="flex:1;" placeholder="random">
-                    <button class="btn btn-secondary" id="wipRollSeed" type="button" style="padding:2px 10px;">Roll</button>
-                  </div>
-                </div>
-                <div class="field" style="flex:1;min-width:120px;">
-                  <label for="wipEnvironment">Environment</label>
-                  <select id="wipEnvironment">
-                    <option>Summer</option><option>Winter</option><option>Desert</option><option>Default</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="field">
-                <label for="wipLength">Length <span class="val" id="wipLengthVal"></span></label>
-                <input id="wipLength" type="range" min="20" max="300" value="80">
-              </div>
-              <div class="field">
-                <label for="wipComplexity">Complexity <span class="val" id="wipComplexityVal"></span></label>
-                <input id="wipComplexity" type="range" min="1" max="10" value="6">
-              </div>
-              <div class="field">
-                <label for="wipSceneryDensity">Scenery Density <span class="val" id="wipSceneryDensityVal"></span></label>
-                <input id="wipSceneryDensity" type="range" min="1" max="10" value="5">
-              </div>
-              <div class="field">
-                <label for="wipJumpScale">Jump Scale <span class="val" id="wipJumpScaleVal"></span></label>
-                <input id="wipJumpScale" type="range" min="1" max="10" value="5">
-              </div>
-              <div class="field">
-                <label for="wipElevation">Elevation <span class="val" id="wipElevationVal"></span></label>
-                <input id="wipElevation" type="range" min="0" max="10" value="4">
-              </div>
-              <div class="field">
-                <label for="wipCurviness">Curviness <span class="val" id="wipCurvinessVal"></span></label>
-                <input id="wipCurviness" type="range" min="0" max="10" value="4">
-              </div>
-              <div class="field">
-                <label for="wipCheckpoints">Checkpoints <span class="val" id="wipCheckpointsVal"></span></label>
-                <input id="wipCheckpoints" type="range" min="0" max="10" value="2">
-              </div>
-
-              <div class="row" style="gap:14px;flex-wrap:wrap;margin:8px 0;">
-                <label class="check"><input type="checkbox" id="wipExotic" checked> Use exotic blocks</label>
-                <label class="check"><input type="checkbox" id="wipScenery" checked> Include scenery</label>
-              </div>
-
-              <button class="btn" id="wipGenerateBtn" type="button">Generate WIP Track</button>
-              <div class="status" id="wipStatus"></div>
-              <div id="wipResults" style="margin-top:10px;"></div>
             </div>
           </details>
 
@@ -688,9 +624,10 @@
                 <li>Submit <strong>both codes</strong> (original + fixed) as a
                   <a class="help-link" href="https://github.com/sankdoy/polytrack-track-gen/issues" target="_blank" rel="noopener noreferrer">GitHub Issue</a>.
                 </li>
+                <li>You can also message me on Discord at <strong>sank doy</strong> with broken and fixed/improved tracks.</li>
               </ol>
               <p style="color:var(--muted);font-size:0.82rem;margin-top:8px;">
-                This helps calibrate jump distances, fix turn alignments, and improve the generator for everyone.
+                This helps me calibrate jump distances, fix turn alignments, and improve the generator.
               </p>
             </div>
           </details>
@@ -699,6 +636,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-15-test-batch-4c"></script>
+    <script type="module" src="./app.mjs?v=2026-02-15-simple-settings"></script>
   </body>
 </html>
