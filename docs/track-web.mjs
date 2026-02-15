@@ -491,47 +491,48 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 // Curated active batch (max 4 at a time) for focused manual fix workflow.
 export const manualMiniTrackScenarios = [
   {
-    id: "tube_ref_lrl_plus_left_exit",
-    label: "Tube Ref Objective: L-R-L base then chained LEFT exit (derived from latest fix)",
+    id: "tube_ref_lrl_left_exit_then_right",
+    label: "Tube Ref Objective: L-R-L-left-exit base then chained RIGHT turn (derived from latest fix)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_lrl_fixed_base", dropFinish: true },
-        { templateId: "tube_ref_left_exact", dx: 38, dz: 34, dropStart: true },
+        { templateId: "tube_lrl_left_exit_fixed_base", dropFinish: true },
+        { templateId: "tube_ref_right_exact", dx: 40, dz: 28, dropStart: true },
       ],
     },
   },
   {
-    id: "tube_ref_lrl_double_chain",
-    label: "Tube Ref Objective: two chained L-R-L fixed modules (seam stress)",
+    id: "tube_ref_double_lrl_plus_left_explicit_seam",
+    label: "Tube Ref Objective: L-R-L-L-R-L chain with explicit double-LEFT seam",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_lrl_fixed_base", dropFinish: true },
-        { templateId: "tube_lrl_fixed_base", dx: 38, dz: 34, dropStart: true },
+        { templateId: "tube_double_lrl_fixed_base", dropFinish: true },
+        { templateId: "tube_ref_left_exact", dx: 56, dz: 12, dropStart: true },
       ],
     },
   },
   {
-    id: "wallride_left_fixed_double",
-    label: "Objective: sustained LEFT wall ride scaffold x2 (derived from latest fix)",
+    id: "tube_ref_triple_lrl_chain_single_delta",
+    label: "Tube Ref Objective: three L-R-L-left-exit modules chained by single-module delta",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "wallride_left_fixed_base", dropFinish: true },
-        { templateId: "wallride_left_fixed_base", dz: -60, dropStart: true },
+        { templateId: "tube_lrl_left_exit_fixed_base", dropFinish: true },
+        { templateId: "tube_lrl_left_exit_fixed_base", dx: 40, dz: 28, dropStart: true, dropFinish: true },
+        { templateId: "tube_lrl_left_exit_fixed_base", dx: 80, dz: 56, dropStart: true },
       ],
     },
   },
   {
-    id: "wallride_left_fixed_double_with_tube_exit",
-    label: "Objective: LEFT wall ride scaffold x2 then straight tube re-entry",
+    id: "wallride_left_scaffold_x3_continuous",
+    label: "Objective: sustained LEFT wall ride scaffold x3 (no reset to ground between modules)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "wallride_left_fixed_base", dropFinish: true },
-        { templateId: "wallride_left_fixed_base", dz: -60, dropStart: true, dropFinish: true },
-        { templateId: "tube_ref_straight_exact", dx: 2, dz: -120, dropStart: true },
+        { templateId: "wallride_left_scaffold_x2_fixed_base", dropFinish: true },
+        { templateId: "wallride_left_scaffold_x2_fixed_base", dx: -3, dz: -124, dropStart: true, dropFinish: true },
+        { templateId: "wallride_left_scaffold_x2_fixed_base", dx: -6, dz: -248, dropStart: true },
       ],
     },
   },
@@ -545,7 +546,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "tube_ref_lrl_plus_left_exit",
+    scenarioId = "tube_ref_lrl_left_exit_then_right",
     name = "Manual Mini Track",
     environment = "Summer",
     format = "polytrack1",
