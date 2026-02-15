@@ -486,94 +486,46 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 
 // ---- Manual mini-tracks (for debugging alignment) ----
 
+const tubeReferenceScenariosById = new Map(buildTubeReferenceScenarios().map((s) => [s.id, s]));
+
+function requireTubeReferenceScenario(id) {
+  const s = tubeReferenceScenariosById.get(id);
+  if (!s) throw new Error(`Unknown tube reference scenario: ${id}`);
+  return s;
+}
+
+// Curated active batch (max 4 at a time) for focused manual fix workflow.
 export const manualMiniTrackScenarios = [
-  // Jump calibration probes (gaps in world units, sub-tile precision).
-  // Formula: gap_wu = round(13.81 * sqrt(totalFlat) - 2.51), totalFlat includes Start tile.
-  // totalFlat=8 (7 str + start) → gap=36 wu (9 tiles)
-  { id: "jump1", label: "Jump 1: runup×7 → upLong → GAP 36wu → down → altDown", steps: [{ kind: "straight", n: 7 }, { kind: "up", long: true }, { kind: "gap", tiles: 9 }, { kind: "down" }, { kind: "altDown" }] },
-  // totalFlat=5 (4 str + start) → gap=28 wu (7 tiles)
-  { id: "jump2", label: "Jump 2: runup×4 → upLong → GAP 28wu → down → altDown", steps: [{ kind: "straight", n: 4 }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }] },
-  // totalFlat=11 (10 str + start) → gap=43 wu (10.75 tiles ≈ 11)
-  { id: "jump3", label: "Jump 3: runup×10 → upLong → GAP 43wu → down → altDown", steps: [{ kind: "straight", n: 10 }, { kind: "up", long: true }, { kind: "gap", tiles: 11 }, { kind: "down" }, { kind: "altDown" }] },
-
-  // TurnShort alignment probes.
-  { id: "turnShortR", label: "TurnShort R: straight×2 → TurnShort(R) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 6 }] },
-  { id: "turnShortL", label: "TurnShort L: straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
-  { id: "turnShortS", label: "TurnShort S: straight×2 → TurnShort(R) → straight×2 → TurnShort(L) → straight×6", steps: [{ kind: "straight", n: 2 }, { kind: "turn", dir: "R", variant: "short" }, { kind: "straight", n: 2 }, { kind: "turn", dir: "L", variant: "short" }, { kind: "straight", n: 6 }] },
-
-  ...buildTubeReferenceScenarios(),
-
-  // Large weird/exotic test battery (objective-first names).
-  { id: "obj_wallride_right_hold", label: "Objective: sustain RIGHT wall ride for 14 segments (stability)", steps: [{ kind: "pieceRun", blockType: "WallRideRight", n: 14 }] },
-  { id: "obj_wallride_left_hold", label: "Objective: sustain LEFT wall ride for 14 segments (stability)", steps: [{ kind: "pieceRun", blockType: "WallRideLeft", n: 14 }] },
-  { id: "obj_wallride_switch_lr", label: "Objective: switch from RIGHT wall ride to LEFT wall ride cleanly", steps: [{ kind: "pieceRun", blockType: "WallRideRight", n: 6 }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "pieceRun", blockType: "WallRideLeft", n: 6 }, { kind: "straight", n: 4 }] },
-
-  { id: "obj_tunnel_long", label: "Objective: tunnel entry-mid-exit long run (connectivity)", steps: [{ kind: "pieceRun", blockType: "TunnelEntry", n: 1 }, { kind: "pieceRun", blockType: "TunnelMid", n: 10 }, { kind: "pieceRun", blockType: "TunnelExit", n: 1 }, { kind: "straight", n: 5 }] },
-  { id: "obj_tunnel_turn_exit", label: "Objective: exit tunnel then immediate sharp right turn", steps: [{ kind: "pieceRun", blockType: "TunnelEntry", n: 1 }, { kind: "pieceRun", blockType: "TunnelMid", n: 5 }, { kind: "pieceRun", blockType: "TunnelExit", n: 1 }, { kind: "turn", dir: "R", variant: "sharp" }, { kind: "straight", n: 6 }] },
-
-  { id: "obj_halfpipe_straight", label: "Objective: half-pipe straight corridor stability", steps: [{ kind: "pieceRun", blockType: "HalfPipe", n: 12 }] },
-  { id: "obj_quarterpipe_straight", label: "Objective: quarter-pipe straight corridor stability", steps: [{ kind: "pieceRun", blockType: "QuarterPipe", n: 12 }] },
-  { id: "obj_halfpipewide_straight", label: "Objective: half-pipe WIDE straight corridor stability", steps: [{ kind: "pieceRun", blockType: "HalfPipeWide", n: 12 }] },
-  { id: "obj_tube_open_combo", label: "Objective: open tube + pipe alternating run", steps: [{ kind: "pieceRun", blockType: "TubeOpen", n: 4 }, { kind: "pieceRun", blockType: "Pipe", n: 4 }, { kind: "pieceRun", blockType: "TubeOpen", n: 4 }, { kind: "pieceRun", blockType: "Pipe", n: 4 }] },
-
-  { id: "obj_cork_right_chain", label: "Objective: repeated RIGHT cork turns (extreme lateral)", steps: [{ kind: "pieceRun", blockType: "CorkRight", n: 10 }] },
-  { id: "obj_cork_left_chain", label: "Objective: repeated LEFT cork turns (extreme lateral)", steps: [{ kind: "pieceRun", blockType: "CorkLeft", n: 10 }] },
-  { id: "obj_cork_switch_lr", label: "Objective: cork left/right alternation without drift explosion", steps: [{ kind: "pieceRun", blockType: "CorkRight", n: 3 }, { kind: "pieceRun", blockType: "CorkLeft", n: 3 }, { kind: "pieceRun", blockType: "CorkRight", n: 3 }, { kind: "pieceRun", blockType: "CorkLeft", n: 3 }] },
-
-  { id: "obj_helix_climb_high", label: "Objective: long helix climb (vertical accumulation)", steps: [{ kind: "pieceRun", blockType: "Helix", n: 10, dyPerPiece: 1 }, { kind: "straight", n: 4 }] },
-  { id: "obj_helix_climb_then_spiral_down", label: "Objective: helix up then spiral down back to baseline", steps: [{ kind: "pieceRun", blockType: "Helix", n: 6, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 6, dyPerPiece: -1 }, { kind: "straight", n: 4 }] },
-  { id: "obj_spiral_stairs_up_down", label: "Objective: spiral stair up/down symmetry", steps: [{ kind: "pieceRun", blockType: "SpiralUp", n: 8, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 8, dyPerPiece: -1 }, { kind: "pieceRun", blockType: "Pipe", n: 4 }] },
-
-  { id: "obj_loop_full_chain", label: "Objective: repeated full loop pieces (upside-down stress)", steps: [{ kind: "pieceRun", blockType: "LoopFull", n: 10 }, { kind: "straight", n: 4 }] },
-  { id: "obj_loop_half_chain", label: "Objective: repeated half loop pieces (inversion transitions)", steps: [{ kind: "pieceRun", blockType: "LoopHalf", n: 12 }, { kind: "straight", n: 4 }] },
-  { id: "obj_loop_start_mid_end", label: "Objective: classic loop start-mid-end sequence closes correctly", steps: [{ kind: "pieceRun", blockType: "LoopStart", n: 1 }, { kind: "pieceRun", blockType: "LoopMid", n: 5 }, { kind: "pieceRun", blockType: "LoopEnd", n: 1 }, { kind: "straight", n: 6 }] },
-  { id: "obj_upside_down_cork_loop_mix", label: "Objective: upside-down mix of loops + corkscrew pieces", steps: [{ kind: "pieceRun", blockType: "LoopFull", n: 3 }, { kind: "pieceRun", blockType: "Corkscrew", n: 5 }, { kind: "pieceRun", blockType: "LoopHalf", n: 4 }, { kind: "pieceRun", blockType: "CorkRight", n: 3 }, { kind: "straight", n: 5 }] },
-
-  { id: "obj_jump_booster_then_gap", label: "Objective: booster run into long gap jump landing", steps: [{ kind: "pieceRun", blockType: "Booster", n: 8 }, { kind: "up", long: true }, { kind: "gap", tiles: 10 }, { kind: "down" }, { kind: "altDown" }, { kind: "straight", n: 4 }] },
-  { id: "obj_jump_steep_vertical", label: "Objective: steep up/down jump arc (near-vertical profile)", steps: [{ kind: "straight", n: 3 }, { kind: "steepUp", dy: 2 }, { kind: "gap", tiles: 8 }, { kind: "steepDown", dy: 2 }, { kind: "straight", n: 4 }] },
-  { id: "obj_jump_ramp_chain", label: "Objective: chain jump-ramp pieces and verify continuity", steps: [{ kind: "pieceRun", blockType: "JumpRamp", n: 8 }, { kind: "straight", n: 6 }] },
-  { id: "obj_stunt_ramp_wide_chain", label: "Objective: chain wide stunt ramps and recover to straight", steps: [{ kind: "pieceRun", blockType: "StuntRampWide", n: 8 }, { kind: "straight", n: 8 }] },
-
-  { id: "obj_bank_left_sweep", label: "Objective: sustained left banking behavior", steps: [{ kind: "pieceRun", blockType: "BankLeft", n: 12 }, { kind: "straight", n: 5 }] },
-  { id: "obj_bank_right_sweep", label: "Objective: sustained right banking behavior", steps: [{ kind: "pieceRun", blockType: "BankRight", n: 12 }, { kind: "straight", n: 5 }] },
-  { id: "obj_curvebank_mixed", label: "Objective: mixed curve-bank variants back-to-back", steps: [{ kind: "pieceRun", blockType: "CurveBank", n: 6 }, { kind: "pieceRun", blockType: "CurveBankWide", n: 6 }, { kind: "straight", n: 6 }] },
-  { id: "obj_wide_narrow_transitions", label: "Objective: repeated wide↔narrow road transitions", steps: [{ kind: "pieceRun", blockType: "WideRoad", n: 6 }, { kind: "pieceRun", blockType: "NarrowRoad", n: 6 }, { kind: "pieceRun", blockType: "WideRoad", n: 6 }, { kind: "pieceRun", blockType: "NarrowRoad", n: 6 }] },
-
-  { id: "obj_wild_mix_a", label: "Objective: wild mix A (tube + wall ride + jump + helix)", steps: [{ kind: "pieceRun", blockType: "Pipe", n: 4 }, { kind: "pieceRun", blockType: "WallRideRight", n: 4 }, { kind: "turn", dir: "L", variant: "sharp" }, { kind: "up", long: true }, { kind: "gap", tiles: 7 }, { kind: "down" }, { kind: "altDown" }, { kind: "pieceRun", blockType: "Helix", n: 4, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 4, dyPerPiece: -1 }] },
-  { id: "obj_wild_mix_b", label: "Objective: wild mix B (loop + cork + tunnel + bank)", steps: [{ kind: "pieceRun", blockType: "LoopStart", n: 1 }, { kind: "pieceRun", blockType: "LoopMid", n: 3 }, { kind: "pieceRun", blockType: "LoopEnd", n: 1 }, { kind: "pieceRun", blockType: "CorkLeft", n: 4 }, { kind: "pieceRun", blockType: "TunnelMid", n: 4 }, { kind: "pieceRun", blockType: "BankRight", n: 4 }, { kind: "straight", n: 5 }] },
-  { id: "obj_chaos_everything", label: "Objective: CHAOS - hit as many weird piece families as possible", steps: [{ kind: "pieceRun", blockType: "Pipe", n: 3 }, { kind: "pieceRun", blockType: "HalfPipeWide", n: 3 }, { kind: "pieceRun", blockType: "WallRideLeft", n: 3 }, { kind: "pieceRun", blockType: "Corkscrew", n: 3 }, { kind: "pieceRun", blockType: "LoopHalf", n: 3 }, { kind: "pieceRun", blockType: "Booster", n: 3 }, { kind: "pieceRun", blockType: "JumpRamp", n: 3 }, { kind: "pieceRun", blockType: "StuntRamp", n: 3 }, { kind: "pieceRun", blockType: "CurveBankWide", n: 3 }, { kind: "pieceRun", blockType: "Helix", n: 3, dyPerPiece: 1 }, { kind: "pieceRun", blockType: "SpiralDown", n: 3, dyPerPiece: -1 }, { kind: "straight", n: 6 }] },
-
-  // Comprehensive: all turn types + jumps in one track.
-  { id: "allTurnsJumps", label: "All turns + jumps", steps: [
-    // Jump 1: totalFlat=6 (5 str + start) → gap=31wu ≈ 8 tiles
-    { kind: "straight", n: 5 },
-    { kind: "up", long: true },
-    { kind: "gap", tiles: 8 },
-    { kind: "down" },
-    { kind: "altDown" },
-    { kind: "straight", n: 3 },
-    // TurnSharp right then left
-    { kind: "turn", dir: "R", variant: "sharp" },
-    { kind: "straight", n: 3 },
-    { kind: "turn", dir: "L", variant: "sharp" },
-    { kind: "straight", n: 3 },
-    // TurnShort right then left
-    { kind: "turn", dir: "R", variant: "short" },
-    { kind: "straight", n: 3 },
-    { kind: "turn", dir: "L", variant: "short" },
-    { kind: "straight", n: 3 },
-    // TurnLong3 right then left
-    { kind: "turn", dir: "R", variant: "long" },
-    { kind: "straight", n: 3 },
-    { kind: "turn", dir: "L", variant: "long" },
-    { kind: "straight", n: 3 },
-    // Jump 2: totalFlat=4 (3 str + 1 from above) → gap=24wu = 6 tiles
-    { kind: "up", long: true },
-    { kind: "gap", tiles: 6 },
-    { kind: "down" },
-    { kind: "altDown" },
-    { kind: "straight", n: 2 },
-  ] },
+  requireTubeReferenceScenario("tube_ref_exact_straight"),
+  {
+    id: "tube_ref_left_then_right_offset_connector",
+    label: "Tube Ref Objective: LEFT then RIGHT pair with offset connector (derived from fixed logic)",
+    tubeReferenceRecipe: {
+      kind: "composite",
+      modules: [
+        { templateId: "tube_ref_left_exact", dropFinish: true },
+        // Bridge into the second turn footprint so modules do not fully overlap.
+        { templateId: "tube_ref_segment_exact", dx: 20, dz: 12 },
+        { templateId: "tube_ref_segment_exact", dx: 20, dz: 16 },
+        { templateId: "tube_ref_right_exact", dx: 20, dz: 16, dropStart: true },
+      ],
+    },
+  },
+  {
+    id: "obj_wallride_left_hold_oriented",
+    label: "Objective: sustain LEFT wall ride for 14 segments (orientation-corrected from prior RIGHT test)",
+    steps: [{ kind: "pieceRun", blockType: "WallRideLeft", n: 14 }],
+  },
+  {
+    id: "obj_wallride_left_to_right_mirror",
+    label: "Objective: mirror wall ride behavior (LEFT hold then RIGHT hold transition)",
+    steps: [
+      { kind: "pieceRun", blockType: "WallRideLeft", n: 7 },
+      { kind: "turn", dir: "R", variant: "sharp" },
+      { kind: "pieceRun", blockType: "WallRideRight", n: 7 },
+      { kind: "straight", n: 4 },
+    ],
+  },
 ];
 
 function getScenario(id) {
@@ -584,7 +536,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "jump1",
+    scenarioId = "tube_ref_exact_straight",
     name = "Manual Mini Track",
     environment = "Summer",
     format = "polytrack1",
