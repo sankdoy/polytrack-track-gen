@@ -3,6 +3,7 @@
 // Requires `pako` on `globalThis` (loaded via <script> in index.html).
 
 import { TUBE_REFERENCE_DATA } from "./tube-reference-data.mjs";
+import { FIXED_REFERENCE_DATA } from "./fixed-reference-data.mjs";
 
 export const BlockType = {
   Straight: 0,
@@ -73,9 +74,10 @@ for (const [name, id] of Object.entries(BlockType)) BlockTypeName[id] = name;
 
 const REF_START_ID = 5;
 const REF_FINISH_ID = 6;
+const REFERENCE_DATA = { ...TUBE_REFERENCE_DATA, ...FIXED_REFERENCE_DATA };
 
 function getRefTemplate(templateId) {
-  const t = TUBE_REFERENCE_DATA[templateId];
+  const t = REFERENCE_DATA[templateId];
   if (!t) throw new Error(`Unknown tube reference template: ${templateId}`);
   return t;
 }
@@ -486,45 +488,52 @@ export function encodePolyTrack1ShareCode(name, trackData, author = "") {
 
 // ---- Manual mini-tracks (for debugging alignment) ----
 
-const tubeReferenceScenariosById = new Map(buildTubeReferenceScenarios().map((s) => [s.id, s]));
-
-function requireTubeReferenceScenario(id) {
-  const s = tubeReferenceScenariosById.get(id);
-  if (!s) throw new Error(`Unknown tube reference scenario: ${id}`);
-  return s;
-}
-
 // Curated active batch (max 4 at a time) for focused manual fix workflow.
 export const manualMiniTrackScenarios = [
-  requireTubeReferenceScenario("tube_ref_exact_straight"),
   {
-    id: "tube_ref_left_then_right_offset_connector",
-    label: "Tube Ref Objective: LEFT then RIGHT pair with offset connector (derived from fixed logic)",
+    id: "tube_ref_lrl_plus_left_exit",
+    label: "Tube Ref Objective: L-R-L base then chained LEFT exit (derived from latest fix)",
     tubeReferenceRecipe: {
       kind: "composite",
       modules: [
-        { templateId: "tube_ref_left_exact", dropFinish: true },
-        // Bridge into the second turn footprint so modules do not fully overlap.
-        { templateId: "tube_ref_segment_exact", dx: 20, dz: 12 },
-        { templateId: "tube_ref_segment_exact", dx: 20, dz: 16 },
-        { templateId: "tube_ref_right_exact", dx: 20, dz: 16, dropStart: true },
+        { templateId: "tube_lrl_fixed_base", dropFinish: true },
+        { templateId: "tube_ref_left_exact", dx: 38, dz: 34, dropStart: true },
       ],
     },
   },
   {
-    id: "obj_wallride_left_hold_oriented",
-    label: "Objective: sustain LEFT wall ride for 14 segments (orientation-corrected from prior RIGHT test)",
-    steps: [{ kind: "pieceRun", blockType: "WallRideLeft", n: 14 }],
+    id: "tube_ref_lrl_double_chain",
+    label: "Tube Ref Objective: two chained L-R-L fixed modules (seam stress)",
+    tubeReferenceRecipe: {
+      kind: "composite",
+      modules: [
+        { templateId: "tube_lrl_fixed_base", dropFinish: true },
+        { templateId: "tube_lrl_fixed_base", dx: 38, dz: 34, dropStart: true },
+      ],
+    },
   },
   {
-    id: "obj_wallride_left_to_right_mirror",
-    label: "Objective: mirror wall ride behavior (LEFT hold then RIGHT hold transition)",
-    steps: [
-      { kind: "pieceRun", blockType: "WallRideLeft", n: 7 },
-      { kind: "turn", dir: "R", variant: "sharp" },
-      { kind: "pieceRun", blockType: "WallRideRight", n: 7 },
-      { kind: "straight", n: 4 },
-    ],
+    id: "wallride_left_fixed_double",
+    label: "Objective: sustained LEFT wall ride scaffold x2 (derived from latest fix)",
+    tubeReferenceRecipe: {
+      kind: "composite",
+      modules: [
+        { templateId: "wallride_left_fixed_base", dropFinish: true },
+        { templateId: "wallride_left_fixed_base", dz: -60, dropStart: true },
+      ],
+    },
+  },
+  {
+    id: "wallride_left_fixed_double_with_tube_exit",
+    label: "Objective: LEFT wall ride scaffold x2 then straight tube re-entry",
+    tubeReferenceRecipe: {
+      kind: "composite",
+      modules: [
+        { templateId: "wallride_left_fixed_base", dropFinish: true },
+        { templateId: "wallride_left_fixed_base", dz: -60, dropStart: true, dropFinish: true },
+        { templateId: "tube_ref_straight_exact", dx: 2, dz: -120, dropStart: true },
+      ],
+    },
   },
 ];
 
@@ -536,7 +545,7 @@ function getScenario(id) {
 
 export function generateManualMiniTrack(params = {}) {
   const {
-    scenarioId = "tube_ref_exact_straight",
+    scenarioId = "tube_ref_lrl_plus_left_exit",
     name = "Manual Mini Track",
     environment = "Summer",
     format = "polytrack1",
