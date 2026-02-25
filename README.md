@@ -1,22 +1,31 @@
-# PolyTrack Track Generator
+# PolyTrack Image Trace Generator
 
-Use it here: https://sankdoy.github.io/polytrack-track-gen/
+Generate a PolyTrack share code from a track image.
 
-Procedural track generator for PolyTrack. Outputs `PolyTrack1` share codes.
+## What it does
 
-## How to use
+- Converts an uploaded image into a binary mask.
+- Traces the main line and converts it to a flat-piece track.
+- Lets you set target length (`km`/`miles`), scaling mode, and track width.
+- Adds border containment pieces only outside the road area.
+- Outputs a `PolyTrack1...` share code.
 
-1. Open the website.
-2. Adjust the settings (length, elevation, curviness, checkpoints, environment, etc).
-3. Click **Generate**.
-4. Copy the generated share code from the results.
-5. In PolyTrack, import the share code to load the track.
+## Run
 
-Tips:
-- Set a **Seed** to make results repeatable.
-- Increase **Batch Count** to roll multiple tracks quickly.
-- **Jump Chance** controls how often jumps appear — gaps are calibrated to match car speed.
-- If a track looks broken, roll again or increase generation limits (like **Max Attempts / Piece**).
+1. Open `index.html` (redirects to `docs/`).
+2. Upload a track outline image.
+3. Set length, unit, width, and scaling options.
+4. Click **Generate Track**.
+5. Copy the generated share code.
 
-Support:
-- Buy me a coffee: https://buymeacoffee.com/sankdoy
+## Tests
+
+Run all tests:
+
+```bash
+node --test
+```
+
+New rule-focused tests are in:
+
+- `tools/image-track-core.test.mjs`

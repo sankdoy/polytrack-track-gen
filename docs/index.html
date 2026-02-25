@@ -3,639 +3,442 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>PolyTrack Generator</title>
+    <title>PolyTrack Image Trace Generator</title>
     <style>
       :root {
-        --olive: #867e32;
-        --olive2: #595421;
-        --serenity: #d2eaf1;
-        --freesia: #fdd365;
-        --taupe: #7e7768;
-        --taupe2: #88857d;
-        --ebony: #323530;
-        --cream: #e3d6ca;
-        --tiger: #c4543c;
-        --sand: #d4c3ac;
-        --cognac: #785e4c;
-
-        --bg0: var(--serenity);
-        --bg1: var(--cream);
-
-        --text: var(--ebony);
-        --muted: rgba(126, 119, 104, 0.82);
-        --muted2: rgba(136, 133, 125, 0.75);
-        --ink92: rgba(50, 53, 48, 0.92);
-        --ink86: rgba(50, 53, 48, 0.86);
-        --ink80: rgba(50, 53, 48, 0.80);
-        --ink70: rgba(50, 53, 48, 0.70);
-        --ink62: rgba(50, 53, 48, 0.62);
-
-        --stroke10: rgba(126, 119, 104, 0.22);
-        --stroke12: rgba(126, 119, 104, 0.28);
-        --stroke14: rgba(126, 119, 104, 0.34);
-
-        --panel: rgba(227, 214, 202, 0.72);
-        --panel2: rgba(212, 195, 172, 0.58);
-        --border: rgba(210, 234, 241, 0.60);
-
-        --shadow: 0 12px 40px rgba(50, 53, 48, 0.16);
-        --radius: 18px;
-
-        --good: var(--olive2);
-        --bad: var(--tiger);
+        --bg0: #f2f1eb;
+        --bg1: #ddd8ca;
+        --ink: #1e1e1e;
+        --muted: #5c5b56;
+        --panel: rgba(250, 248, 243, 0.88);
+        --line: #c8c1af;
+        --accent: #1f6db6;
+        --accent2: #d24b1f;
+        --good: #245f2a;
+        --bad: #8e2723;
+        --shadow: 0 14px 36px rgba(30, 30, 30, 0.12);
+        --radius: 16px;
       }
 
-      * { box-sizing: border-box; margin: 0; }
-      a { color: inherit; }
+      * { box-sizing: border-box; }
 
       body {
-        font-family: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background-color: var(--bg0);
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Cpolygon points='0,0 140,0 0,110' fill='%23fdd365' fill-opacity='.28'/%3E%3Cpolygon points='140,0 260,0 320,70 190,90' fill='%23d4c3ac' fill-opacity='.30'/%3E%3Cpolygon points='0,110 110,70 190,140 40,200 0,200' fill='%23d2eaf1' fill-opacity='.55'/%3E%3Cpolygon points='190,90 320,70 320,200 210,200 160,150' fill='%23c4543c' fill-opacity='.16'/%3E%3Cpolygon points='110,70 190,10 260,80 190,140' fill='%23867e32' fill-opacity='.14'/%3E%3C/svg%3E");
-        background-size: 320px 200px;
-        background-repeat: repeat;
-        color: var(--text);
-        line-height: 1.5;
+        margin: 0;
         min-height: 100vh;
-        overflow-x: hidden;
+        color: var(--ink);
+        font-family: "Sora", "Avenir Next", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 8% 12%, rgba(31, 109, 182, 0.12), transparent 40%),
+          radial-gradient(circle at 90% 10%, rgba(210, 75, 31, 0.11), transparent 42%),
+          linear-gradient(165deg, var(--bg0), var(--bg1));
       }
 
       .topbar {
         position: sticky;
         top: 0;
-        z-index: 10;
-        padding: 14px 18px;
-        background: rgba(227, 214, 202, 0.38);
-        backdrop-filter: blur(14px) saturate(1.2);
-        border-bottom: 1px solid var(--stroke10);
+        z-index: 6;
+        backdrop-filter: blur(8px);
+        background: rgba(242, 241, 235, 0.72);
+        border-bottom: 1px solid rgba(92, 91, 86, 0.12);
       }
 
       .topbar-inner {
-        max-width: 1320px;
+        max-width: 1280px;
         margin: 0 auto;
+        padding: 14px 18px;
         display: flex;
-        align-items: center;
+        align-items: baseline;
         justify-content: space-between;
         gap: 12px;
-        flex-wrap: wrap;
       }
 
-      .brand {
+      .title {
         display: flex;
         align-items: baseline;
         gap: 10px;
       }
 
-      .brand h1 {
-        font-size: 1.02rem;
-        letter-spacing: 0.2px;
-        font-weight: 800;
+      .title h1 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: 0.03em;
       }
 
-      .brand .sub {
+      .updated {
+        margin: 0;
         color: var(--muted);
-        font-size: 0.8rem;
-        font-weight: 650;
-      }
-
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid var(--stroke14);
-        background: var(--panel2);
-        box-shadow: 0 8px 24px rgba(50, 53, 48, 0.10);
-        color: var(--ink80);
-        font-size: 0.75rem;
-        font-weight: 700;
-      }
-
-      .badge .updated {
-        color: var(--ink62);
-        font-weight: 600;
-      }
-
-      .top-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-
-      .chiplink {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid var(--stroke14);
-        background: var(--panel2);
-        backdrop-filter: blur(10px) saturate(1.2);
-        box-shadow: 0 10px 28px rgba(50, 53, 48, 0.12);
-        text-decoration: none;
         font-size: 0.78rem;
-        font-weight: 800;
-        transition: transform 0.15s, box-shadow 0.15s;
-      }
-      button.chiplink { cursor: pointer; }
-
-      .chiplink:hover { transform: translateY(-1px); box-shadow: 0 14px 44px rgba(50, 53, 48, 0.14); }
-      .chiplink svg { width: 14px; height: 14px; }
-
-      .support {
-        border-color: var(--stroke10);
-        background: rgba(253, 211, 101, 0.42);
       }
 
       main {
-        max-width: 1180px;
-        margin: 16px auto 36px;
+        max-width: 1280px;
+        margin: 18px auto 40px;
         padding: 0 16px;
-      }
-
-      .layout {
         display: grid;
-        grid-template-columns: minmax(320px, 420px) 1fr;
-        grid-template-areas:
-          "left right"
-          "bottom bottom"
-          "extra extra";
+        grid-template-columns: minmax(320px, 410px) minmax(0, 1fr);
         gap: 16px;
-        align-items: start;
       }
 
       @media (max-width: 980px) {
-        .layout {
+        main {
           grid-template-columns: 1fr;
-          grid-template-areas:
-            "left"
-            "right"
-            "bottom"
-            "extra";
         }
       }
 
       .panel {
         background: var(--panel);
-        border: 1px solid var(--border);
+        border: 1px solid var(--line);
         border-radius: var(--radius);
-        padding: 16px;
         box-shadow: var(--shadow);
-        backdrop-filter: blur(14px) saturate(1.2);
-        position: relative;
-        overflow: hidden;
+        padding: 16px;
       }
 
-      .panel::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='320' viewBox='0 0 480 320'%3E%3Cpolygon points='0,0 190,0 0,150' fill='%23d2eaf1' fill-opacity='.22'/%3E%3Cpolygon points='190,0 340,0 480,120 260,150' fill='%23fdd365' fill-opacity='.18'/%3E%3Cpolygon points='0,150 160,90 260,200 80,320 0,320' fill='%23d4c3ac' fill-opacity='.20'/%3E%3Cpolygon points='260,150 480,120 480,320 320,320 220,220' fill='%23c4543c' fill-opacity='.10'/%3E%3Cpolygon points='160,90 260,20 340,120 260,200' fill='%23867e32' fill-opacity='.10'/%3E%3C/svg%3E");
-        background-size: 480px 320px;
-        background-repeat: no-repeat;
-        background-position: center;
-        opacity: 0.9;
-      }
-
-      .panel > * { position: relative; }
-
-      .left { grid-area: left; }
-      .right { grid-area: right; }
-      .bottom { grid-area: bottom; }
-      .extra { grid-area: extra; }
-
-      .panel h2 {
+      h2 {
+        margin: 0 0 12px;
         font-size: 0.78rem;
-        letter-spacing: 0.09em;
         text-transform: uppercase;
-        color: var(--ink62);
-        margin-bottom: 12px;
-        font-weight: 900;
-      }
-
-      .panel-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 10px;
+        letter-spacing: 0.1em;
+        color: var(--muted);
       }
 
       .field { margin-bottom: 12px; }
 
       label {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 5px;
-        color: var(--muted);
+        display: block;
+        margin-bottom: 6px;
         font-size: 0.82rem;
-        font-weight: 700;
+        color: var(--muted);
+        font-weight: 600;
       }
 
-      label .val { color: var(--ink92); font-weight: 900; }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 110px;
+        gap: 8px;
+      }
 
       input[type="text"],
       input[type="number"],
+      input[type="file"],
       select {
         width: 100%;
-        padding: 8px 10px;
+        border: 1px solid var(--line);
         border-radius: 12px;
-        border: 1px solid var(--stroke14);
-        background: rgba(227, 214, 202, 0.52);
-        color: var(--ink92);
+        background: #fdfcf8;
+        color: var(--ink);
+        padding: 9px 10px;
         font-size: 0.86rem;
-        outline: none;
-        transition: border-color 0.15s, box-shadow 0.15s;
-      }
-
-      input[type="text"]:focus,
-      input[type="number"]:focus,
-      select:focus {
-        border-color: var(--olive);
-        box-shadow: 0 0 0 4px rgba(134, 126, 50, 0.25), 0 14px 40px rgba(50, 53, 48, 0.14);
       }
 
       input[type="range"] {
         width: 100%;
-        height: 4px;
-        -webkit-appearance: none;
-        appearance: none;
-        background: rgba(212, 195, 172, 0.70);
-        border-radius: 2px;
-        outline: none;
-      }
-
-      input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: var(--freesia);
-        cursor: pointer;
-        border: 1px solid rgba(126, 119, 104, 0.34);
-        box-shadow: 0 8px 20px rgba(50, 53, 48, 0.18);
-      }
-
-      input[type="range"]::-moz-range-thumb {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: var(--freesia);
-        cursor: pointer;
-        border: 1px solid rgba(126, 119, 104, 0.34);
-      }
-
-      .row { display: flex; gap: 8px; align-items: center; }
-      .row > * { flex: 1; }
-
-      .btn {
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-        padding: 10px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--stroke12);
-        background: var(--freesia);
-        color: var(--ink92);
-        font-size: 0.86rem;
-        font-weight: 900;
-        cursor: pointer;
-        transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
-        box-shadow: 0 14px 40px rgba(50, 53, 48, 0.18);
-      }
-      .btn:hover { background: rgba(134, 126, 50, 0.20); }
-
-      .btn:hover { transform: translateY(-1px) scale(1.01); filter: saturate(1.1); }
-      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-      .btn-secondary {
-        background: var(--panel2);
-        color: var(--ink86);
-        font-weight: 850;
-        box-shadow: 0 10px 30px rgba(50, 53, 48, 0.14);
-      }
-
-      .btn-small { padding: 7px 10px; font-size: 0.78rem; border-radius: 999px; }
-
-      .checkbox {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 8px 0 10px;
-        color: var(--muted);
-        font-size: 0.8rem;
-        font-weight: 750;
-      }
-
-      .checkbox input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        accent-color: var(--olive);
-        cursor: pointer;
+        accent-color: var(--accent);
       }
 
       .check {
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        justify-content: flex-start;
         gap: 8px;
-        margin: 0;
+        margin-bottom: 8px;
         color: var(--muted);
-        font-size: 0.8rem;
-        font-weight: 750;
-        cursor: pointer;
+        font-size: 0.84rem;
       }
 
-      .check input[type="checkbox"] {
+      .check input {
         width: 16px;
         height: 16px;
-        margin: 0;
-        accent-color: var(--olive);
-        cursor: pointer;
-        flex: 0 0 auto;
       }
 
-      .status { margin-top: 10px; font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
-      .status.bad { color: var(--bad); }
+      .btn {
+        border: 1px solid rgba(30, 30, 30, 0.18);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-weight: 700;
+        font-size: 0.86rem;
+        cursor: pointer;
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .btn:hover { filter: brightness(1.06); }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-secondary {
+        background: #f6f3ea;
+        color: var(--ink);
+      }
+
+      .status {
+        margin-top: 10px;
+        min-height: 1.2em;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
       .status.good { color: var(--good); }
+      .status.bad { color: var(--bad); }
+
+      .value {
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      @media (max-width: 1200px) {
+        .preview-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .preview-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: #f8f5ee;
+      }
+
+      .preview-card h3 {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      canvas {
+        width: 100%;
+        max-width: 100%;
+        border: 1px solid rgba(92, 91, 86, 0.34);
+        border-radius: 10px;
+        background: #faf9f5;
+        image-rendering: crisp-edges;
+      }
+
+      #output {
+        margin-top: 14px;
+        display: none;
+      }
+
+      .result-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #faf8f1;
+        padding: 12px;
+      }
+
+      .result-head {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+      }
+
+      .result-head h3 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .result-meta {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      .result-line {
+        margin: 8px 0 0;
+        font-size: 0.84rem;
+      }
+
+      .code {
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #f3efe4;
+        padding: 10px;
+        font-family: "SF Mono", "Cascadia Code", monospace;
+        font-size: 0.78rem;
+        line-height: 1.42;
+        max-height: 110px;
+        overflow: auto;
+        word-break: break-all;
+      }
+
+      .actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+      }
 
       details {
-        border: 1px solid var(--stroke10);
-        border-radius: 16px;
-        background: var(--panel2);
-        box-shadow: 0 10px 30px rgba(50, 53, 48, 0.14);
-        margin-bottom: 10px;
-        overflow: hidden;
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #f8f5ec;
       }
 
       summary {
         cursor: pointer;
-        padding: 12px 12px;
-        user-select: none;
-        font-weight: 900;
-        color: var(--ink80);
-        list-style: none;
-      }
-
-      summary::-webkit-details-marker { display: none; }
-
-      details[open] summary {
-        background: rgba(253, 211, 101, 0.22);
-      }
-
-      .accordionBody { padding: 12px 12px 2px; }
-
-      .card {
-        background: var(--panel2);
-        border: 1px solid var(--stroke10);
-        border-radius: 16px;
-        padding: 14px;
-        margin-bottom: 10px;
-        box-shadow: 0 12px 34px rgba(50, 53, 48, 0.16);
-      }
-
-      .card-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        gap: 10px;
-        margin-bottom: 8px;
-      }
-
-      .card-title { font-weight: 900; font-size: 0.95rem; }
-      .card-meta { color: var(--muted); font-size: 0.78rem; font-weight: 750; }
-
-      .code {
-        font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
-        background: rgba(212, 195, 172, 0.48);
-        border: 1px solid var(--stroke12);
-        border-radius: 14px;
-        padding: 10px;
-        word-break: break-all;
-        font-size: 0.78rem;
-        color: var(--ink86);
-        max-height: 100px;
-        overflow: auto;
-        line-height: 1.4;
-      }
-
-      .actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-      .actions .btn { padding: 7px 12px; font-size: 0.78rem; }
-
-      .desc {
-        margin-top: 8px;
-        color: var(--ink70);
-        white-space: pre-wrap;
-        font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
-        font-size: 0.72rem;
-        line-height: 1.4;
-        border-left: 2px solid var(--stroke12);
-        padding-left: 10px;
-      }
-
-      .help-list {
-        color: var(--ink80);
-        font-size: 0.84rem;
-        line-height: 1.6;
-        padding-left: 20px;
-      }
-      .help-list li { margin-bottom: 6px; }
-      .help-list strong { color: var(--ink92); }
-
-      .help-link {
-        color: var(--olive2);
+        font-size: 0.82rem;
+        padding: 8px 10px;
+        color: var(--muted);
         font-weight: 700;
-        text-decoration: underline;
-        text-underline-offset: 2px;
       }
 
-      @media (prefers-reduced-motion: reduce) {
-        .btn, .chiplink, input[type="text"], input[type="number"], select { transition: none !important; }
+      .diag {
+        margin: 0;
+        padding: 0 10px 10px;
+        font-size: 0.74rem;
+        line-height: 1.38;
+        color: #3f3f3f;
+        white-space: pre-wrap;
+      }
+
+      .hint {
+        margin-top: 10px;
+        font-size: 0.78rem;
+        color: var(--muted);
+        line-height: 1.4;
       }
     </style>
   </head>
   <body>
     <header class="topbar">
       <div class="topbar-inner">
-        <div class="brand">
-          <h1>PolyTrack Generator</h1>
-          <span class="badge"><span class="updated" id="updated"></span></span>
-        </div>
-        <div class="top-actions">
-          <a class="chiplink support" href="https://buymeacoffee.com/sankdoy" target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M7 9h11v3.5a4.5 4.5 0 0 1-4.5 4.5H9.5A4.5 4.5 0 0 1 5 12.5V11a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-              <path d="M18 10.2h1.1a2.9 2.9 0 0 1 0 5.8H17.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              <path d="M8 17.2V19a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-            Buy me a coffee
-          </a>
+        <div class="title">
+          <h1>PolyTrack Image Trace Generator</h1>
+          <p class="updated" id="updated"></p>
         </div>
       </div>
     </header>
 
     <main>
-      <div class="layout">
-        <section class="panel left" aria-label="Essentials">
-          <h2>Essentials</h2>
+      <section class="panel" aria-label="Controls">
+        <h2>Build Inputs</h2>
 
-          <div class="field">
-            <label>Track Name</label>
-            <input type="text" id="name" value="Generated Track" />
+        <div class="field">
+          <label for="imageInput">Track image</label>
+          <input id="imageInput" type="file" accept="image/*" />
+          <div id="imageStatus" class="status"></div>
+        </div>
+
+        <div class="field">
+          <label for="name">Track name</label>
+          <input id="name" type="text" value="Image Trace Track" />
+        </div>
+
+        <div class="field">
+          <label for="environment">Environment</label>
+          <select id="environment">
+            <option value="Summer" selected>Summer</option>
+            <option value="Winter">Winter</option>
+            <option value="Desert">Desert</option>
+            <option value="Default">Default</option>
+          </select>
+        </div>
+
+        <div class="field split">
+          <div>
+            <label for="targetLength">Target length</label>
+            <input id="targetLength" type="number" min="0.1" step="0.1" value="60" />
           </div>
-
-          <div class="field">
-            <label>Seed</label>
-            <div class="row">
-              <input type="number" id="seed" placeholder="Random" />
-              <button class="btn btn-secondary" id="rollSeed" type="button">Roll</button>
-            </div>
+          <div>
+            <label for="lengthUnit">Unit</label>
+            <select id="lengthUnit">
+              <option value="km" selected>km</option>
+              <option value="mi">miles</option>
+            </select>
           </div>
+        </div>
 
-          <div class="field">
-            <label>Batch Count</label>
-            <input type="number" id="batch" value="1" min="1" max="50" />
+        <div class="field split">
+          <div>
+            <label for="widthTiles">Track width (tiles)</label>
+            <input id="widthTiles" type="number" min="1" max="12" step="1" value="1" />
           </div>
-
-          <button class="btn" id="generateBtn" type="button">Generate</button>
-          <div class="status" id="status"></div>
-        </section>
-
-        <section class="panel right" aria-label="Parameters">
-          <h2>Parameters</h2>
-
-          <details open>
-            <summary>Standard Settings</summary>
-            <div class="accordionBody">
-              <div class="field">
-                <label>Length <span class="val" id="lengthVal">500</span></label>
-                <input type="range" id="length" min="10" max="750" value="500" step="1" />
-              </div>
-
-              <div class="field">
-                <label>Checkpoint Density <span class="val" id="checkpointDensityVal">20% (~12)</span></label>
-                <input type="range" id="checkpointDensity" min="0" max="100" value="20" step="1" />
-              </div>
-
-              <div class="field">
-                <label>Elevation Profile</label>
-                <select id="elevationProfile">
-                  <option value="grounded">Grounded Cruise (mostly flat)</option>
-                  <option value="rolling" selected>Rolling Hills</option>
-                  <option value="mountain">Mountain Route</option>
-                  <option value="skyline">Skyline Climb</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label>Curviness Profile</label>
-                <select id="curvinessProfile">
-                  <option value="laser">Laser Line (dead straight)</option>
-                  <option value="sweeping">Sweeping Arcs (long turns only)</option>
-                  <option value="curvy" selected>Curvy Flow</option>
-                  <option value="roundabout">Roundabout Madness</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label>Environment</label>
-                <select id="environment">
-                  <option value="Summer" selected>Summer</option>
-                  <option value="Winter">Winter</option>
-                  <option value="Desert">Desert</option>
-                  <option value="Default">Default</option>
-                </select>
-              </div>
-
-              <div class="checkbox">
-                <input type="checkbox" id="includeJumps" checked />
-                <span>Include jumps (fixed 20% chance)</span>
-              </div>
-
-              <div class="checkbox">
-                <input type="checkbox" id="includeIntersections" />
-                <span>Include self intersections (fixed 30% chance when possible)</span>
-              </div>
-            </div>
-          </details>
-
-          <details>
-            <summary>Advanced</summary>
-            <div class="accordionBody">
-              <div class="field">
-                <label>Max Height <span class="val" id="maxHeightVal">24</span></label>
-                <input type="range" id="maxHeight" min="0" max="200" value="24" />
-              </div>
-
-              <div class="field">
-                <label>Max Attempts / Piece <span class="val" id="maxAttemptsPerPieceVal">25</span></label>
-                <input type="range" id="maxAttemptsPerPiece" min="1" max="200" value="25" />
-              </div>
-
-              <div class="checkbox">
-                <input type="checkbox" id="allowSteepSlopes" checked />
-                <span>Allow steep slopes (+2Y)</span>
-              </div>
-
-              <div class="checkbox">
-                <input type="checkbox" id="pillars" />
-                <span>Pillars (supports)</span>
-              </div>
-            </div>
-          </details>
-        </section>
-
-        <section class="panel bottom" id="output" style="display:none;" aria-label="Results">
-          <div class="panel-head">
-            <h2>Share Codes</h2>
-            <div class="badge">PolyTrack1</div>
+          <div>
+            <label for="metersPerTile">Meters / tile</label>
+            <input id="metersPerTile" type="number" min="0.2" max="50" step="0.1" value="4" />
           </div>
+        </div>
+
+        <div class="field">
+          <label for="scaleMode">Scaling mode</label>
+          <select id="scaleMode">
+            <option value="best-fit" selected>Best fit to target length</option>
+            <option value="one-to-one">1:1 image pixels to tiles</option>
+            <option value="manual">Manual scale ratio</option>
+          </select>
+        </div>
+
+        <div class="field" id="scaleRatioWrap" style="display:none;">
+          <label for="scaleRatio">Manual scale ratio (tiles / px)</label>
+          <input id="scaleRatio" type="number" min="0.02" max="20" step="0.02" value="1" />
+        </div>
+
+        <div class="field">
+          <label for="threshold">Black/white threshold <span class="value" id="thresholdVal">140</span></label>
+          <input id="threshold" type="range" min="0" max="255" value="140" step="1" />
+        </div>
+
+        <label class="check"><input id="invert" type="checkbox" /> Detect light line on dark background (invert)</label>
+        <label class="check"><input id="closeLoop" type="checkbox" checked /> Force closed loop</label>
+        <label class="check"><input id="borderEnabled" type="checkbox" checked /> Add border pieces only outside road area</label>
+
+        <div class="field">
+          <label for="trimPasses">Endpoint trim passes (noise cleanup)</label>
+          <input id="trimPasses" type="number" min="0" max="10" step="1" value="1" />
+        </div>
+
+        <button class="btn" id="generateBtn" type="button">Generate Track</button>
+        <div class="status" id="status"></div>
+
+        <p class="hint">
+          The generator traces the line from your image, scales it to your target length, and builds a flat-piece track with border containment on the outside.
+        </p>
+      </section>
+
+      <section class="panel" aria-label="Previews and output">
+        <h2>Previews</h2>
+
+        <div class="preview-grid">
+          <article class="preview-card">
+            <h3>Original</h3>
+            <canvas id="previewOriginal" width="640" height="360"></canvas>
+          </article>
+          <article class="preview-card">
+            <h3>Mask</h3>
+            <canvas id="previewMask" width="640" height="360"></canvas>
+          </article>
+          <article class="preview-card">
+            <h3>Trace</h3>
+            <canvas id="previewTrace" width="640" height="360"></canvas>
+          </article>
+        </div>
+
+        <section id="output" aria-label="Result output">
+          <h2 style="margin-top:14px;">Share Code</h2>
           <div id="results"></div>
         </section>
-
-        <section class="panel extra" aria-label="More">
-          <details>
-            <summary>Test Tracks</summary>
-            <div class="accordionBody">
-              <p style="color:var(--muted);font-size:0.82rem;margin-bottom:10px;">
-                Generate specific test scenarios for debugging alignment, jumps, turns, and reference-derived tube logic.
-              </p>
-              <div class="field">
-                <label>Scenario</label>
-                <select id="testScenario"></select>
-              </div>
-              <button class="btn btn-secondary" id="testGenerateBtn" type="button">Generate Test Track</button>
-              <div class="status" id="testStatus"></div>
-              <div id="testResults" style="margin-top:10px;"></div>
-            </div>
-          </details>
-
-          <details>
-            <summary>How You Can Help</summary>
-            <div class="accordionBody">
-              <ol class="help-list">
-                <li><strong>Generate</strong> a short track (10-30 pieces) and test it in PolyTrack.</li>
-                <li>If it's <strong>broken</strong> (disconnected pieces, impossible jumps, bad landings), copy the share code.</li>
-                <li><strong>Fix it</strong> in PolyTrack's editor &mdash; adjust landings, reconnect sections, etc.</li>
-                <li>Submit <strong>both codes</strong> (original + fixed) as a
-                  <a class="help-link" href="https://github.com/sankdoy/polytrack-track-gen/issues" target="_blank" rel="noopener noreferrer">GitHub Issue</a>.
-                </li>
-                <li>You can also message me on Discord at <strong>sank doy</strong> with broken and fixed/improved tracks.</li>
-              </ol>
-              <p style="color:var(--muted);font-size:0.82rem;margin-top:8px;">
-                This helps me calibrate jump distances, fix turn alignments, and improve the generator.
-              </p>
-            </div>
-          </details>
-        </section>
-      </div>
+      </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script type="module" src="./app.mjs?v=2026-02-15-seam-compact-v9"></script>
+    <script type="module" src="./app.mjs?v=2026-02-25-image-v1"></script>
   </body>
 </html>
