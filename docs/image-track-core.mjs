@@ -1062,6 +1062,45 @@ function boundsForRoadMap(roadMap) {
   return { minX, maxX, minY, maxY };
 }
 
+// Returns the centroid of an array of {x,y} points as an interior seed for closed loops.
+function computeInteriorSeed(pieces) {
+  if (!Array.isArray(pieces) || pieces.length === 0) return null;
+  let sx = 0, sy = 0;
+  for (const p of pieces) { sx += p.x; sy += p.y; }
+  return { x: Math.round(sx / pieces.length), y: Math.round(sy / pieces.length) };
+}
+
+// Flood-fills from `seed` through non-road cells within the padded bounds.
+// Returns the reached Set. If the flood escapes the bounds the seed is NOT
+// inside a closed region, so an empty Set is returned instead.
+function floodFromSeed(roadMap, seed, bounds, padding) {
+  const x0 = bounds.minX - padding;
+  const x1 = bounds.maxX + padding;
+  const y0 = bounds.minY - padding;
+  const y1 = bounds.maxY + padding;
+  const reached = new Set();
+  if (!seed) return reached;
+  const startKey = keyOf(seed.x, seed.y);
+  if (roadMap.has(startKey)) return reached;
+  let escaped = false;
+  reached.add(startKey);
+  const queue = [[seed.x, seed.y]];
+  let qi = 0;
+  while (qi < queue.length) {
+    const [x, y] = queue[qi++];
+    for (let k = 0; k < DIR4.length; k++) {
+      const nx = x + DIR4[k].x;
+      const ny = y + DIR4[k].y;
+      const nk = keyOf(nx, ny);
+      if (reached.has(nk) || roadMap.has(nk)) continue;
+      if (nx < x0 || nx > x1 || ny < y0 || ny > y1) { escaped = true; continue; }
+      reached.add(nk);
+      queue.push([nx, ny]);
+    }
+  }
+  return escaped ? new Set() : reached;
+}
+
 function floodOutsideEmpty(roadMap, bounds, padding = 2) {
   const x0 = bounds.minX - padding;
   const x1 = bounds.maxX + padding;
@@ -1093,7 +1132,7 @@ function floodOutsideEmpty(roadMap, bounds, padding = 2) {
   return { outside, x0, x1, y0, y1 };
 }
 
-export function splitBorderMapByOutsideReachability(roadMap, borderMap, { padding = 2 } = {}) {
+export function splitBorderMapByOutsideReachability(roadMap, borderMap, { padding = 2, interiorSeed = null } = {}) {
   const bounds = boundsForRoadMap(roadMap);
   if (!bounds) {
     return {
@@ -1104,13 +1143,26 @@ export function splitBorderMapByOutsideReachability(roadMap, borderMap, { paddin
     };
   }
 
-  const flooded = floodOutsideEmpty(roadMap, bounds, Math.max(1, Number(padding) || 1));
+  const pad = Math.max(1, Number(padding) || 1);
+  const flooded = floodOutsideEmpty(roadMap, bounds, pad);
+
+  // If an interior seed is provided, flood-fill the enclosed interior so that
+  // border cells reachable from inside the loop are correctly classified as inner
+  // even when narrow gaps let the exterior flood seep in.
+  let interiorSet = new Set();
+  if (interiorSeed) {
+    interiorSet = floodFromSeed(roadMap, interiorSeed, bounds, pad);
+  }
+
   const outerBorderMap = new Map();
   const innerBorderMap = new Map();
 
   for (const cell of borderMap.values()) {
     const k = keyOf(cell.x, cell.y);
-    if (flooded.outside.has(k)) outerBorderMap.set(k, cell);
+    // Interior flood takes priority: a cell reachable from the known interior is
+    // always inner, even if the exterior flood also reached it through a gap.
+    if (interiorSet.has(k)) innerBorderMap.set(k, cell);
+    else if (flooded.outside.has(k)) outerBorderMap.set(k, cell);
     else innerBorderMap.set(k, cell);
   }
 
@@ -1309,7 +1361,8 @@ export function planToTrackData(plan, {
     if (!plan.closeLoop) {
       borderMap = pruneOpenEndCaps(plan.borderMap, plan.centerlinePieces, plan.widthTiles);
     } else {
-      const split = splitBorderMapByOutsideReachability(plan.roadMap, plan.borderMap, { padding: 2 });
+      const interiorSeed = computeInteriorSeed(plan.centerlinePieces);
+      const split = splitBorderMapByOutsideReachability(plan.roadMap, plan.borderMap, { padding: 2, interiorSeed });
       borderMap = split.outerBorderMap;
 
       // Outer bridge pass: fill convex corner gaps (diagonal check prevents spurious bridges)
