@@ -1056,21 +1056,26 @@ function floodOutsideEmpty(roadMap, bounds, padding = 2) {
   const y0 = bounds.minY - padding;
   const y1 = bounds.maxY + padding;
   const outside = new Set();
-  const queue = [[x0, y0]];
+  const queue = [];
 
-  while (queue.length) {
-    const [x, y] = queue.shift();
-    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+  const enqueue = (x, y) => {
+    if (x < x0 || x > x1 || y < y0 || y > y1) return;
     const k = keyOf(x, y);
-    if (outside.has(k)) continue;
-    if (roadMap.has(k)) continue;
+    if (outside.has(k)) return;
+    if (roadMap.has(k)) return;
     outside.add(k);
-    queue.push(
-      [x + 1, y],
-      [x - 1, y],
-      [x, y + 1],
-      [x, y - 1],
-    );
+    queue.push([x, y]);
+  };
+
+  enqueue(x0, y0);
+
+  let qi = 0;
+  while (qi < queue.length) {
+    const [x, y] = queue[qi++];
+    enqueue(x + 1, y);
+    enqueue(x - 1, y);
+    enqueue(x, y + 1);
+    enqueue(x, y - 1);
   }
 
   return { outside, x0, x1, y0, y1 };
@@ -1199,6 +1204,7 @@ function lengthToMeters(value, unit) {
   const n = Math.max(0, Number(value) || 0);
   const u = String(unit || "km").toLowerCase();
   if (u === "mi" || u === "mile" || u === "miles") return n * 1609.344;
+  if (u === "m" || u === "meter" || u === "meters") return n;
   return n * 1000;
 }
 
@@ -1288,6 +1294,27 @@ export function planToTrackData(plan, {
     } else {
       const split = splitBorderMapByOutsideReachability(plan.roadMap, plan.borderMap, { padding: 2 });
       borderMap = split.outerBorderMap;
+
+      // Outer bridge pass: fill convex corner gaps (diagonal check prevents spurious bridges)
+      if (split.bounds) {
+        const ob = new Set(borderMap.keys());
+        const toAdd = [];
+        const { x0, x1, y0, y1 } = split.bounds;
+        for (let by = y0; by <= y1; by++) {
+          for (let bx = x0; bx <= x1; bx++) {
+            const k = keyOf(bx, by);
+            if (plan.roadMap.has(k) || !split.outsideEmpty.has(k) || borderMap.has(k)) continue;
+            const n = ob.has(keyOf(bx, by - 1)), e = ob.has(keyOf(bx + 1, by));
+            const s = ob.has(keyOf(bx, by + 1)), w = ob.has(keyOf(bx - 1, by));
+            if ((n && e && !ob.has(keyOf(bx + 1, by - 1))) ||
+                (e && s && !ob.has(keyOf(bx + 1, by + 1))) ||
+                (s && w && !ob.has(keyOf(bx - 1, by + 1))) ||
+                (w && n && !ob.has(keyOf(bx - 1, by - 1)))) toAdd.push({ x: bx, y: by });
+          }
+        }
+        for (const c of toAdd) borderMap.set(keyOf(c.x, c.y), { x: c.x, y: c.y, votes: { 0: 1 } });
+      }
+
       if (innerBorderEnabled) {
         innerBorderMap = buildInnerBorderFromRoad(plan.roadMap, {
           padding: 2,
@@ -1315,7 +1342,7 @@ export function planToTrackData(plan, {
           x: cell.x,
           y: cell.y,
           roadMap: plan.roadMap,
-          preferRoadAxis: !plan.closeLoop,
+          preferRoadAxis: true,
         });
         let blockType = picked.blockType;
         let rotation = picked.rotation;
