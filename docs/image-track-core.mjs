@@ -1232,6 +1232,7 @@ export function planToTrackData(plan, {
   borderEnabled = true,
   innerBorderEnabled = false,
   fillPiece = null,
+  emitCheckpoints = true,
 } = {}) {
   const env = mapEnvironment(environment);
   const trackData = new TrackData(env, 28);
@@ -1257,10 +1258,12 @@ export function planToTrackData(plan, {
   const centerlineSet = new Set();
   const checkpointIndices = new Map();
 
-  const cpCount = Math.max(1, Math.min(8, Math.round(plan.centerlinePieces.length / 28)));
-  for (let i = 0; i < cpCount; i++) {
-    const idx = Math.max(1, Math.min(plan.centerlinePieces.length - 1, Math.floor(((i + 1) * plan.centerlinePieces.length) / (cpCount + 1))));
-    if (!checkpointIndices.has(idx)) checkpointIndices.set(idx, checkpointIndices.size);
+  if (emitCheckpoints) {
+    const cpCount = Math.max(1, Math.min(8, Math.round(plan.centerlinePieces.length / 28)));
+    for (let i = 0; i < cpCount; i++) {
+      const idx = Math.max(1, Math.min(plan.centerlinePieces.length - 1, Math.floor(((i + 1) * plan.centerlinePieces.length) / (cpCount + 1))));
+      if (!checkpointIndices.has(idx)) checkpointIndices.set(idx, checkpointIndices.size);
+    }
   }
 
   for (let i = 0; i < plan.centerlinePieces.length; i++) {
@@ -1268,14 +1271,16 @@ export function planToTrackData(plan, {
     centerlineSet.add(keyOf(p.x, p.y));
     let blockType = p.blockType;
     let checkpointOrder = null;
-    if (blockType === REFERENCE_BLOCK.START) {
+    if (!emitCheckpoints && blockType === REFERENCE_BLOCK.START) {
+      blockType = chooseStraightPiece(plan.widthTiles);
+    } else if (emitCheckpoints && blockType === REFERENCE_BLOCK.START) {
       blockType = chooseStartBlockType(p.rotation, plan.roadMap, p.x, p.y);
     }
-    if (checkpointIndices.has(i) && blockType !== REFERENCE_BLOCK.START && blockType !== REFERENCE_BLOCK.START_ALT) {
+    if (emitCheckpoints && checkpointIndices.has(i) && blockType !== REFERENCE_BLOCK.START && blockType !== REFERENCE_BLOCK.START_ALT) {
       checkpointOrder = checkpointIndices.get(i);
       blockType = checkpointBlockTypeForOrder(checkpointOrder, checkpointIndices.size);
     }
-    add(p.x, p.y, blockType, p.rotation, checkpointOrder, p.startOrder);
+    add(p.x, p.y, blockType, p.rotation, checkpointOrder, emitCheckpoints ? p.startOrder : null);
   }
 
   const filler = fillPiece ?? chooseStraightPiece(plan.widthTiles);
@@ -1360,13 +1365,15 @@ export function planToTrackData(plan, {
   }
 
   // Emit the marker piece seen in the reference fixed track.
-  const start = plan.centerlinePieces.find((p) => p.blockType === REFERENCE_BLOCK.START);
-  if (start) {
-    const hx = DIR4[start.rotation]?.x ?? 0;
-    const hy = DIR4[start.rotation]?.y ?? -1;
-    const mx = start.x + hx;
-    const my = start.y + hy;
-    add(mx, my, REFERENCE_BLOCK.FINISH_MARKER, start.rotation);
+  if (emitCheckpoints) {
+    const start = plan.centerlinePieces.find((p) => p.blockType === REFERENCE_BLOCK.START);
+    if (start) {
+      const hx = DIR4[start.rotation]?.x ?? 0;
+      const hy = DIR4[start.rotation]?.y ?? -1;
+      const mx = start.x + hx;
+      const my = start.y + hy;
+      add(mx, my, REFERENCE_BLOCK.FINISH_MARKER, start.rotation);
+    }
   }
 
   return trackData;
@@ -1526,25 +1533,8 @@ export function generateTrackFromImageData({
     borderPiece,
     borderEnabled,
     innerBorderEnabled: useInnerBorder,
+    emitCheckpoints: false,
   });
-
-  const allowed = new Set([
-    REFERENCE_BLOCK.START,
-    REFERENCE_BLOCK.START_ALT,
-    REFERENCE_BLOCK.CHECKPOINT_ALT,
-    REFERENCE_BLOCK.FINISH_MARKER_ALT,
-    REFERENCE_BLOCK.FINISH,
-    REFERENCE_BLOCK.FINISH_MARKER,
-    REFERENCE_BLOCK.ROAD,
-    REFERENCE_BLOCK.TURN_LEFT,
-    REFERENCE_BLOCK.TURN_RIGHT,
-    REFERENCE_BLOCK.BORDER,
-  ]);
-  for (const [blockType] of trackData.parts.entries()) {
-    if (!allowed.has(blockType)) {
-      throw new Error(`Generated disallowed blockType ${blockType} under strict reference-piece mode`);
-    }
-  }
 
   const shareCode = encodePolyTrack1ShareCode(name, trackData, "");
   const metrics = buildMetrics(centerlinePieces.length, closeLoop, Math.max(0.2, Number(metersPerTile) || 0.2));

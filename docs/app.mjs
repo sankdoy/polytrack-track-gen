@@ -1,5 +1,5 @@
-import { generateTrackFromImageData, maskToPreviewRgba } from "./image-track-core.mjs?v=2026-02-25-image-v1";
-import { summarizeTrackData } from "./track-web.mjs?v=2026-02-25-image-v1";
+import { generateTrackFromImageData, imageDataToBinaryMask, maskToPreviewRgba } from "./image-track-core.mjs?v=2026-02-27";
+import { summarizeTrackData } from "./track-web.mjs?v=2026-02-27";
 
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
 const $ = (id) => document.getElementById(id);
@@ -207,6 +207,26 @@ async function readImageFile(file) {
   });
 }
 
+let liveMaskTimer = null;
+function scheduleLiveMask() {
+  clearTimeout(liveMaskTimer);
+  liveMaskTimer = setTimeout(drawLiveMask, 80);
+}
+
+function drawLiveMask() {
+  if (!state.imageData) return;
+  const maskCanvas = $("previewMask");
+  if (!maskCanvas) return;
+  const threshold = parseNumber("threshold", 140);
+  const invert = parseBoolean("invert", false);
+  const { mask, width, height } = imageDataToBinaryMask(state.imageData, { threshold, invert });
+  const rgba = maskToPreviewRgba(mask, width, height, {
+    on: [30, 30, 30, 255],
+    off: [245, 242, 235, 255],
+  });
+  drawMaskCanvas(maskCanvas, rgba, width, height);
+}
+
 async function handleImageSelection() {
   const input = $("imageInput");
   const file = input?.files?.[0];
@@ -224,8 +244,9 @@ async function handleImageSelection() {
     state.imageWidth = imageData.width;
     state.imageHeight = imageData.height;
 
-    setImageStatus(`Loaded ${file.name} (${imageData.width} x ${imageData.height})`, "good");
-    setStatus("Image ready. Adjust options and generate.");
+    setImageStatus(`Loaded ${file.name} (${imageData.width} × ${imageData.height})`, "good");
+    setStatus("Image ready. Adjust threshold then generate.");
+    drawLiveMask();
   } catch (err) {
     setImageStatus(String(err?.message || err), "bad");
   }
@@ -292,6 +313,9 @@ if (hasDOM) {
   $("imageInput")?.addEventListener("change", () => {
     handleImageSelection();
   });
+
+  $("threshold")?.addEventListener("input", scheduleLiveMask);
+  $("invert")?.addEventListener("change", drawLiveMask);
 
   $("generateBtn")?.addEventListener("click", () => {
     runGeneration();
