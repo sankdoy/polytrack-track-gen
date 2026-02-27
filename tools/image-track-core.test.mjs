@@ -17,9 +17,12 @@ const REF_IDS = {
   TURN_LEFT: 11,
   TURN_RIGHT: 12,
   ROAD: 25,
+  CHECKPOINT_ALT: 75,
+  FINISH_MARKER_ALT: 76,
   FINISH: 77,
   FINISH_MARKER: 78,
   START: 92,
+  START_ALT: 93,
 };
 
 function createImageData(width, height, bg = 245) {
@@ -153,18 +156,21 @@ test("image trace generator outputs decodable PolyTrack1 using allowed piece fam
     REF_IDS.TURN_LEFT,
     REF_IDS.TURN_RIGHT,
     REF_IDS.ROAD,
+    REF_IDS.CHECKPOINT_ALT,
+    REF_IDS.FINISH_MARKER_ALT,
     REF_IDS.FINISH,
     REF_IDS.FINISH_MARKER,
     REF_IDS.START,
+    REF_IDS.START_ALT,
   ]);
   for (const p of decoded.parts) {
     assert.ok(allowed.has(p.blockType), `unexpected block type ${p.blockType}`);
   }
 
-  const starts = decoded.parts.filter((p) => p.blockType === REF_IDS.START).length;
+  const starts = decoded.parts.filter((p) => p.blockType === REF_IDS.START || p.blockType === REF_IDS.START_ALT).length;
   const finishes = decoded.parts.filter((p) => p.blockType === REF_IDS.FINISH).length;
   assert.equal(starts, 1, "must have exactly one start");
-  assert.equal(finishes, 1, "must have exactly one finish");
+  assert.ok(finishes >= 1, "must have at least one checkpoint/finish marker");
 
   const roadCells = new Set();
   const borderCells = new Set();

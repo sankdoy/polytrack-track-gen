@@ -16,10 +16,15 @@ const REFERENCE_BLOCK = {
   TURN_LEFT: 11,
   TURN_RIGHT: 12,
   BORDER: 10,
+  CHECKPOINT_ALT: 75,
+  FINISH_MARKER_ALT: 76,
   FINISH: 77,
   FINISH_MARKER: 78,
   START: 92,
+  START_ALT: 93,
 };
+
+export const REFERENCE_PALETTE = Object.freeze({ ...REFERENCE_BLOCK });
 
 const DIR4 = [
   { x: 0, y: -1 }, // 0 north
@@ -112,6 +117,70 @@ export function imageDataToBinaryMask(imageData, {
   }
 
   return { mask: out, width, height };
+}
+
+/**
+ * Extract the outer perimeter ring of a binary mask.
+ * Returns a new mask where only cells adjacent to the exterior (background reachable
+ * from the image border) are set. This converts a filled road-surface image into a
+ * 1-cell-wide boundary ring — the correct input for skeleton tracing.
+ */
+export function extractOuterBoundary(mask, width, height) {
+  const len = width * height;
+  const exterior = new Uint8Array(len);
+  const queue = [];
+
+  // Seed flood fill from every image-edge pixel that is background
+  for (let x = 0; x < width; x++) {
+    const top = x;
+    const bot = (height - 1) * width + x;
+    if (!mask[top] && !exterior[top]) { exterior[top] = 1; queue.push(top); }
+    if (!mask[bot] && !exterior[bot]) { exterior[bot] = 1; queue.push(bot); }
+  }
+  for (let y = 1; y < height - 1; y++) {
+    const left = y * width;
+    const right = y * width + width - 1;
+    if (!mask[left] && !exterior[left]) { exterior[left] = 1; queue.push(left); }
+    if (!mask[right] && !exterior[right]) { exterior[right] = 1; queue.push(right); }
+  }
+
+  // BFS: flood all exterior background cells (4-connected)
+  let head = 0;
+  while (head < queue.length) {
+    const i = queue[head++];
+    const x = i % width;
+    const y = (i / width) | 0;
+    for (let k = 0; k < DIR4.length; k++) {
+      const nx = x + DIR4[k].x;
+      const ny = y + DIR4[k].y;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const ni = ny * width + nx;
+      if (exterior[ni] || mask[ni]) continue;
+      exterior[ni] = 1;
+      queue.push(ni);
+    }
+  }
+
+  // Boundary: "on" cells with at least one exterior-facing (4-connected) neighbour
+  const boundary = new Uint8Array(len);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      if (!mask[i]) continue;
+      let isBoundary = false;
+      for (let k = 0; k < DIR4.length; k++) {
+        const nx = x + DIR4[k].x;
+        const ny = y + DIR4[k].y;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height || exterior[ny * width + nx]) {
+          isBoundary = true;
+          break;
+        }
+      }
+      if (isBoundary) boundary[i] = 1;
+    }
+  }
+
+  return boundary;
 }
 
 export function keepLargestComponent(mask, width, height) {
@@ -707,6 +776,114 @@ function chooseStraightPiece(widthTiles) {
   return REFERENCE_BLOCK.ROAD;
 }
 
+export function checkpointBlockTypeForOrder(order, total) {
+  if (total <= 4) return REFERENCE_BLOCK.FINISH;
+  if (order === 0) return REFERENCE_BLOCK.CHECKPOINT_ALT;
+  return order % 2 === 1 ? REFERENCE_BLOCK.CHECKPOINT_ALT : REFERENCE_BLOCK.FINISH;
+}
+
+function chooseStartBlockType(rotation, roadMap, x, y) {
+  let roadNeighborCount = 0;
+  const key = (px, py) => `${px},${py}`;
+  if (roadMap?.has(key(x + 1, y))) roadNeighborCount++;
+  if (roadMap?.has(key(x - 1, y))) roadNeighborCount++;
+  if (roadMap?.has(key(x, y + 1))) roadNeighborCount++;
+  if (roadMap?.has(key(x, y - 1))) roadNeighborCount++;
+
+  // Calibrated from fixed box track: low-degree start with rot=0 prefers StartAlt(93).
+  if (rotation === 0 && roadNeighborCount <= 2) return REFERENCE_BLOCK.START_ALT;
+  return REFERENCE_BLOCK.START;
+}
+
+const BORDER_MASK_TO_PIECE = Object.freeze({
+  ES: { blockType: REFERENCE_BLOCK.TURN_RIGHT, rotation: 0 },
+  NE: { blockType: REFERENCE_BLOCK.TURN_RIGHT, rotation: 1 },
+  NW: { blockType: REFERENCE_BLOCK.TURN_RIGHT, rotation: 2 },
+  SW: { blockType: REFERENCE_BLOCK.TURN_RIGHT, rotation: 3 },
+  NES: { blockType: REFERENCE_BLOCK.BORDER, rotation: 2 },
+  NEW: { blockType: REFERENCE_BLOCK.BORDER, rotation: 3 },
+  NSW: { blockType: REFERENCE_BLOCK.BORDER, rotation: 0 },
+  ESW: { blockType: REFERENCE_BLOCK.BORDER, rotation: 1 },
+  NESW: { blockType: REFERENCE_BLOCK.TURN_LEFT, rotation: 0 },
+});
+
+function roadHasCell(roadMap, x, y) {
+  return !!roadMap && roadMap.has(keyOf(x, y));
+}
+
+function shouldUseTurnLeftCorner(mask, x, y, roadMap) {
+  if (!roadMap) return false;
+
+  if (mask === "ES") {
+    return roadHasCell(roadMap, x - 1, y - 1);
+  }
+  if (mask === "NE") {
+    return roadHasCell(roadMap, x - 1, y + 1);
+  }
+  if (mask === "NW") {
+    return roadHasCell(roadMap, x + 1, y + 1);
+  }
+  if (mask === "SW") {
+    return roadHasCell(roadMap, x + 1, y - 1);
+  }
+
+  return false;
+}
+
+export function pickBorderPieceForMask(mask, fallbackRotation = 0, context = null) {
+  const fb = ((Number(fallbackRotation) || 0) % 4 + 4) % 4;
+  const x = context?.x;
+  const y = context?.y;
+  const roadMap = context?.roadMap;
+  const preferRoadAxis = !!context?.preferRoadAxis;
+
+  const roadN = roadHasCell(roadMap, x, y - 1);
+  const roadE = roadHasCell(roadMap, x + 1, y);
+  const roadS = roadHasCell(roadMap, x, y + 1);
+  const roadW = roadHasCell(roadMap, x - 1, y);
+
+  // If a border cell touches road only on one axis, treat it as a straight side wall.
+  // This prevents open-end mouths from collapsing into corner pieces.
+  if (preferRoadAxis && (roadE !== roadW) && !roadN && !roadS) {
+    return { blockType: REFERENCE_BLOCK.BORDER, rotation: roadE ? 2 : 0 };
+  }
+  if (preferRoadAxis && (roadN !== roadS) && !roadE && !roadW) {
+    return { blockType: REFERENCE_BLOCK.BORDER, rotation: roadS ? 1 : 3 };
+  }
+
+  const entry = BORDER_MASK_TO_PIECE[mask];
+  if (entry) {
+    if (
+      entry.blockType === REFERENCE_BLOCK.TURN_RIGHT
+      && shouldUseTurnLeftCorner(mask, context?.x, context?.y, context?.roadMap)
+    ) {
+      return { blockType: REFERENCE_BLOCK.TURN_LEFT, rotation: entry.rotation };
+    }
+    return entry;
+  }
+  if (mask === "NS") {
+    if (preferRoadAxis && roadE && !roadW) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 2 };
+    if (preferRoadAxis && roadW && !roadE) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 0 };
+    return { blockType: REFERENCE_BLOCK.BORDER, rotation: fb % 2 === 0 ? fb : 0 };
+  }
+  if (mask === "EW") {
+    if (preferRoadAxis && roadS && !roadN) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 1 };
+    if (preferRoadAxis && roadN && !roadS) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 3 };
+    return { blockType: REFERENCE_BLOCK.BORDER, rotation: fb % 2 === 1 ? fb : 1 };
+  }
+  if (mask === "N" || mask === "S") {
+    if (preferRoadAxis && roadE && !roadW) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 2 };
+    if (preferRoadAxis && roadW && !roadE) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 0 };
+    return { blockType: REFERENCE_BLOCK.BORDER, rotation: 0 };
+  }
+  if (mask === "E" || mask === "W") {
+    if (preferRoadAxis && roadS && !roadN) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 1 };
+    if (preferRoadAxis && roadN && !roadS) return { blockType: REFERENCE_BLOCK.BORDER, rotation: 3 };
+    return { blockType: REFERENCE_BLOCK.BORDER, rotation: 1 };
+  }
+  return { blockType: REFERENCE_BLOCK.BORDER, rotation: fb };
+}
+
 export function centerlineToPieces(cells, {
   closed = true,
   widthTiles = 1,
@@ -716,7 +893,6 @@ export function centerlineToPieces(cells, {
   }
 
   const n = cells.length;
-  const finishIndex = closed ? Math.max(1, Math.floor(n / 2)) : n - 1;
   const out = [];
 
   for (let i = 0; i < n; i++) {
@@ -753,9 +929,6 @@ export function centerlineToPieces(cells, {
       blockType = REFERENCE_BLOCK.START;
       rotation = outHeading;
       startOrder = 0;
-    } else if (i === finishIndex) {
-      blockType = REFERENCE_BLOCK.FINISH;
-      rotation = outHeading;
     } else if (inHeading === outHeading) {
       blockType = chooseStraightPiece(widthTiles);
       rotation = outHeading;
@@ -860,6 +1033,155 @@ export function buildBorderFromRoad(roadMap) {
   return borderMap;
 }
 
+function boundsForRoadMap(roadMap) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const cell of roadMap.values()) {
+    minX = Math.min(minX, cell.x);
+    maxX = Math.max(maxX, cell.x);
+    minY = Math.min(minY, cell.y);
+    maxY = Math.max(maxY, cell.y);
+  }
+
+  if (!Number.isFinite(minX)) return null;
+  return { minX, maxX, minY, maxY };
+}
+
+function floodOutsideEmpty(roadMap, bounds, padding = 2) {
+  const x0 = bounds.minX - padding;
+  const x1 = bounds.maxX + padding;
+  const y0 = bounds.minY - padding;
+  const y1 = bounds.maxY + padding;
+  const outside = new Set();
+  const queue = [[x0, y0]];
+
+  while (queue.length) {
+    const [x, y] = queue.shift();
+    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+    const k = keyOf(x, y);
+    if (outside.has(k)) continue;
+    if (roadMap.has(k)) continue;
+    outside.add(k);
+    queue.push(
+      [x + 1, y],
+      [x - 1, y],
+      [x, y + 1],
+      [x, y - 1],
+    );
+  }
+
+  return { outside, x0, x1, y0, y1 };
+}
+
+export function splitBorderMapByOutsideReachability(roadMap, borderMap, { padding = 2 } = {}) {
+  const bounds = boundsForRoadMap(roadMap);
+  if (!bounds) {
+    return {
+      outerBorderMap: new Map(),
+      innerBorderMap: new Map(),
+      outsideEmpty: new Set(),
+      bounds: null,
+    };
+  }
+
+  const flooded = floodOutsideEmpty(roadMap, bounds, Math.max(1, Number(padding) || 1));
+  const outerBorderMap = new Map();
+  const innerBorderMap = new Map();
+
+  for (const cell of borderMap.values()) {
+    const k = keyOf(cell.x, cell.y);
+    if (flooded.outside.has(k)) outerBorderMap.set(k, cell);
+    else innerBorderMap.set(k, cell);
+  }
+
+  return {
+    outerBorderMap,
+    innerBorderMap,
+    outsideEmpty: flooded.outside,
+    bounds: { ...bounds, x0: flooded.x0, x1: flooded.x1, y0: flooded.y0, y1: flooded.y1 },
+  };
+}
+
+export function buildInnerBorderFromRoad(roadMap, {
+  padding = 2,
+  orthogonalBridges = true,
+} = {}) {
+  const borderMap = buildBorderFromRoad(roadMap);
+  const split = splitBorderMapByOutsideReachability(roadMap, borderMap, { padding });
+  const innerBorderMap = new Map(split.innerBorderMap);
+
+  if (!orthogonalBridges || !split.bounds) return innerBorderMap;
+  const baseInner = new Set(innerBorderMap.keys());
+  const toAdd = [];
+
+  const hasBaseInner = (x, y) => baseInner.has(keyOf(x, y));
+
+  for (let y = split.bounds.y0; y <= split.bounds.y1; y++) {
+    for (let x = split.bounds.x0; x <= split.bounds.x1; x++) {
+      const k = keyOf(x, y);
+      if (roadMap.has(k)) continue;
+      if (split.outsideEmpty.has(k)) continue;
+      if (innerBorderMap.has(k)) continue;
+      const n = hasBaseInner(x, y - 1);
+      const e = hasBaseInner(x + 1, y);
+      const s = hasBaseInner(x, y + 1);
+      const w = hasBaseInner(x - 1, y);
+      if (!((n && e) || (e && s) || (s && w) || (w && n))) continue;
+      toAdd.push({ x, y });
+    }
+  }
+
+  for (const cell of toAdd) {
+    innerBorderMap.set(keyOf(cell.x, cell.y), { x: cell.x, y: cell.y, votes: { 0: 1 } });
+  }
+
+  return innerBorderMap;
+}
+
+function endpointHeadingForOpening(piece, isStart) {
+  if (isStart) {
+    const out = piece?.outHeading ?? piece?.inHeading ?? piece?.rotation ?? 0;
+    return (out + 2) % 4;
+  }
+  return piece?.inHeading ?? piece?.outHeading ?? piece?.rotation ?? 0;
+}
+
+export function pruneOpenEndCaps(borderMap, centerlinePieces, widthTiles = 1) {
+  if (!(borderMap instanceof Map)) return borderMap;
+  if (!Array.isArray(centerlinePieces) || centerlinePieces.length < 2) return borderMap;
+
+  const radius = Math.max(0, Math.round((Math.max(1, Number(widthTiles) || 1) - 1) / 2));
+  const out = new Map(borderMap);
+
+  const endpoints = [
+    { piece: centerlinePieces[0], isStart: true },
+    { piece: centerlinePieces[centerlinePieces.length - 1], isStart: false },
+  ];
+
+  for (const ep of endpoints) {
+    const p = ep.piece;
+    if (!p) continue;
+    const heading = endpointHeadingForOpening(p, ep.isStart);
+    const dir = DIR4[heading] || DIR4[0];
+    const left = DIR4[(heading + 1) % 4];
+    const right = DIR4[(heading + 3) % 4];
+
+    const cx = p.x + dir.x;
+    const cy = p.y + dir.y;
+    out.delete(keyOf(cx, cy));
+
+    for (let d = 1; d <= radius; d++) {
+      out.delete(keyOf(cx + left.x * d, cy + left.y * d));
+      out.delete(keyOf(cx + right.x * d, cy + right.y * d));
+    }
+  }
+
+  return out;
+}
+
 function mapEnvironment(env) {
   if (typeof env === "number") {
     if (env === 0 || env === 1 || env === 2 || env === 3) return env;
@@ -902,6 +1224,7 @@ export function planToTrackData(plan, {
   environment = Environment.Summer,
   borderPiece = REFERENCE_BLOCK.BORDER,
   borderEnabled = true,
+  innerBorderEnabled = false,
   fillPiece = null,
 } = {}) {
   const env = mapEnvironment(environment);
@@ -926,11 +1249,27 @@ export function planToTrackData(plan, {
   };
 
   const centerlineSet = new Set();
+  const checkpointIndices = new Map();
+
+  const cpCount = Math.max(1, Math.min(8, Math.round(plan.centerlinePieces.length / 28)));
+  for (let i = 0; i < cpCount; i++) {
+    const idx = Math.max(1, Math.min(plan.centerlinePieces.length - 1, Math.floor(((i + 1) * plan.centerlinePieces.length) / (cpCount + 1))));
+    if (!checkpointIndices.has(idx)) checkpointIndices.set(idx, checkpointIndices.size);
+  }
 
   for (let i = 0; i < plan.centerlinePieces.length; i++) {
     const p = plan.centerlinePieces[i];
     centerlineSet.add(keyOf(p.x, p.y));
-    add(p.x, p.y, p.blockType, p.rotation, null, p.startOrder);
+    let blockType = p.blockType;
+    let checkpointOrder = null;
+    if (blockType === REFERENCE_BLOCK.START) {
+      blockType = chooseStartBlockType(p.rotation, plan.roadMap, p.x, p.y);
+    }
+    if (checkpointIndices.has(i) && blockType !== REFERENCE_BLOCK.START && blockType !== REFERENCE_BLOCK.START_ALT) {
+      checkpointOrder = checkpointIndices.get(i);
+      blockType = checkpointBlockTypeForOrder(checkpointOrder, checkpointIndices.size);
+    }
+    add(p.x, p.y, blockType, p.rotation, checkpointOrder, p.startOrder);
   }
 
   const filler = fillPiece ?? chooseStraightPiece(plan.widthTiles);
@@ -941,9 +1280,56 @@ export function planToTrackData(plan, {
   }
 
   if (borderEnabled) {
-    for (const cell of plan.borderMap.values()) {
-      add(cell.x, cell.y, borderPiece, dominantHeading(cell.votes, 0));
+    let borderMap = plan.borderMap;
+    let innerBorderMap = new Map();
+
+    if (!plan.closeLoop) {
+      borderMap = pruneOpenEndCaps(plan.borderMap, plan.centerlinePieces, plan.widthTiles);
+    } else {
+      const split = splitBorderMapByOutsideReachability(plan.roadMap, plan.borderMap, { padding: 2 });
+      borderMap = split.outerBorderMap;
+      if (innerBorderEnabled) {
+        innerBorderMap = buildInnerBorderFromRoad(plan.roadMap, {
+          padding: 2,
+          orthogonalBridges: true,
+        });
+      }
     }
+
+    const addBorderMap = (srcMap) => {
+      if (!srcMap || !srcMap.size) return;
+
+      const borderSet = new Set();
+      for (const cell of srcMap.values()) borderSet.add(keyOf(cell.x, cell.y));
+
+      const hasBorderAt = (x, y) => borderSet.has(keyOf(x, y));
+
+      for (const cell of srcMap.values()) {
+        const n = hasBorderAt(cell.x, cell.y - 1);
+        const e = hasBorderAt(cell.x + 1, cell.y);
+        const s = hasBorderAt(cell.x, cell.y + 1);
+        const w = hasBorderAt(cell.x - 1, cell.y);
+        const mask = `${n ? "N" : ""}${e ? "E" : ""}${s ? "S" : ""}${w ? "W" : ""}`;
+        const fallbackRotation = dominantHeading(cell.votes, 0);
+        const picked = pickBorderPieceForMask(mask || "-", fallbackRotation, {
+          x: cell.x,
+          y: cell.y,
+          roadMap: plan.roadMap,
+          preferRoadAxis: !plan.closeLoop,
+        });
+        let blockType = picked.blockType;
+        let rotation = picked.rotation;
+
+        if (borderPiece !== REFERENCE_BLOCK.BORDER && blockType === REFERENCE_BLOCK.BORDER) {
+          blockType = borderPiece;
+        }
+
+        add(cell.x, cell.y, blockType, rotation);
+      }
+    };
+
+    addBorderMap(borderMap);
+    if (innerBorderEnabled && plan.closeLoop) addBorderMap(innerBorderMap);
   }
 
   // Emit the marker piece seen in the reference fixed track.
@@ -1020,6 +1406,7 @@ export function generateTrackFromImageData({
   scaleRatio = 1,
   metersPerTile = 4,
   widthTiles = 1,
+  innerBorderEnabled = null,
   closeLoop = true,
   threshold = 140,
   invert = false,
@@ -1031,12 +1418,24 @@ export function generateTrackFromImageData({
 } = {}) {
   const { mask, width, height } = imageDataToBinaryMask(imageData, { threshold, invert });
   const largest = keepLargestComponent(mask, width, height);
-  const thinned = thinMaskZhangSuen(largest, width, height, { maxIterations: 80 });
+
+  // Extract the outer perimeter ring before thinning.
+  // For a filled road-surface image (the typical input) this gives a 1-2 pixel wide
+  // ring representing the outer edge of the track — the correct shape to trace.
+  // For an already-thin centerline image the boundary ≈ the line itself, so behaviour
+  // is unchanged.
+  const outerBoundary = extractOuterBoundary(largest, width, height);
+
+  const thinned = thinMaskZhangSuen(outerBoundary, width, height, { maxIterations: 80 });
   const trimmed = trimEndpoints(thinned, width, height, { passes: trimPasses });
 
   let traced = traceMainPathFromMask(trimmed, width, height);
   if (traced.length < 8) {
     traced = traceMainPathFromMask(thinned, width, height);
+  }
+  if (traced.length < 8) {
+    // Final fallback: try tracing the raw outer boundary in case thinning collapsed it
+    traced = traceMainPathFromMask(outerBoundary, width, height);
   }
   if (traced.length < 8) {
     throw new Error("Could not trace a usable line from the image. Try adjusting threshold or invert.");
@@ -1052,6 +1451,11 @@ export function generateTrackFromImageData({
   const mode = normalizeScaleMode(scaleMode);
   const desiredMeters = lengthToMeters(targetLength, lengthUnit);
   const desiredTiles = desiredMeters > 0 ? desiredMeters / Math.max(0.2, Number(metersPerTile) || 0.2) : 0;
+  const requestedWidthTiles = Math.max(1, Number(widthTiles) || 1);
+  const useInnerBorder = innerBorderEnabled == null
+    ? (closeLoop && requestedWidthTiles >= 3)
+    : !!innerBorderEnabled;
+  const effectiveWidthTiles = useInnerBorder ? Math.max(3, requestedWidthTiles) : requestedWidthTiles;
 
   let baseScale = 1;
   if (mode === "manual") {
@@ -1076,14 +1480,14 @@ export function generateTrackFromImageData({
 
   const centerlinePieces = centerlineToPieces(gridPath, {
     closed: closeLoop,
-    widthTiles,
+    widthTiles: effectiveWidthTiles,
   });
 
-  const roadMap = expandRoadWidth(centerlinePieces, { widthTiles });
+  const roadMap = expandRoadWidth(centerlinePieces, { widthTiles: effectiveWidthTiles });
   const borderMap = buildBorderFromRoad(roadMap);
 
   const plan = {
-    widthTiles: Math.max(1, Number(widthTiles) || 1),
+    widthTiles: effectiveWidthTiles,
     closeLoop,
     centerlinePieces,
     roadMap,
@@ -1094,10 +1498,14 @@ export function generateTrackFromImageData({
     environment,
     borderPiece,
     borderEnabled,
+    innerBorderEnabled: useInnerBorder,
   });
 
   const allowed = new Set([
     REFERENCE_BLOCK.START,
+    REFERENCE_BLOCK.START_ALT,
+    REFERENCE_BLOCK.CHECKPOINT_ALT,
+    REFERENCE_BLOCK.FINISH_MARKER_ALT,
     REFERENCE_BLOCK.FINISH,
     REFERENCE_BLOCK.FINISH_MARKER,
     REFERENCE_BLOCK.ROAD,
@@ -1125,6 +1533,7 @@ export function generateTrackFromImageData({
       pixels: {
         rawTrackPixels: countMaskPixels(mask),
         largestComponentPixels: countMaskPixels(largest),
+        outerBoundaryPixels: countMaskPixels(outerBoundary),
         thinnedPixels: countMaskPixels(thinned),
         trimmedPixels: countMaskPixels(trimmed),
       },
@@ -1138,10 +1547,13 @@ export function generateTrackFromImageData({
       lengthUnit,
       desiredTiles,
       borderEnabled,
+      innerBorderEnabled: useInnerBorder,
+      widthTiles: effectiveWidthTiles,
     },
     debug: {
       rawMask: mask,
       largestMask: largest,
+      outerBoundaryMask: outerBoundary,
       thinMask: thinned,
       trimmedMask: trimmed,
       tracedPath: traced,
