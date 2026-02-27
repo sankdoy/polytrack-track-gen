@@ -1003,6 +1003,18 @@ export function expandRoadWidth(centerlinePieces, { widthTiles = 1 } = {}) {
       addRoadCell(roadMap, p.x + left.x * d, p.y + left.y * d, heading);
       addRoadCell(roadMap, p.x + right.x * d, p.y + right.y * d, heading);
     }
+
+    // At turn cells, also expand along the incoming heading's perpendicular to
+    // fill the corner notch that the outHeading-only expansion leaves open.
+    // Without this, the flood fill can squeeze through the notch and misclassify
+    // interior-side border cells as outer, producing pieces inside the track.
+    if (p.inHeading != null && p.inHeading !== heading) {
+      const { left: li, right: ri } = perpendicularOffsetsForHeading(p.inHeading);
+      for (let d = 1; d <= radius; d++) {
+        addRoadCell(roadMap, p.x + li.x * d, p.y + li.y * d, p.inHeading);
+        addRoadCell(roadMap, p.x + ri.x * d, p.y + ri.y * d, p.inHeading);
+      }
+    }
   }
 
   return roadMap;
