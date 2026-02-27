@@ -1063,27 +1063,7 @@ function boundsForRoadMap(roadMap) {
 }
 
 
-// Winding-number point-in-polygon test for a 4-connected grid path.
-// Test point is (bx+0.5, by+0.5) — the centre of grid cell (bx, by).
-// Only vertical edges contribute to a rightward horizontal ray.
-// For a unit-step path each vertical edge spans exactly 1 row, and it
-// crosses y = by+0.5 iff its lower endpoint y equals by.
-function isInsideGridPolygon(bx, by, path) {
-  let winding = 0;
-  const n = path.length;
-  for (let i = 0; i < n; i++) {
-    const a = path[i];
-    const b = path[(i + 1) % n];
-    if (a.x !== b.x) continue;        // horizontal edge — skip
-    if (a.x <= bx) continue;          // edge is to the left — ray misses it
-    const yMin = Math.min(a.y, b.y);
-    if (yMin !== by) continue;         // unit edge crosses y=by+0.5 only when yMin==by
-    winding += (a.y < b.y) ? -1 : 1;
-  }
-  return winding !== 0;
-}
-
-function floodOutsideEmpty(roadMap, bounds, padding = 2) {
+function floodOutsideEmpty(roadMap, bounds, padding = 2, extraBarrier = null) {
   const x0 = bounds.minX - padding;
   const x1 = bounds.maxX + padding;
   const y0 = bounds.minY - padding;
@@ -1096,6 +1076,7 @@ function floodOutsideEmpty(roadMap, bounds, padding = 2) {
     const k = keyOf(x, y);
     if (outside.has(k)) return;
     if (roadMap.has(k)) return;
+    if (extraBarrier && extraBarrier.has(k)) return;
     outside.add(k);
     queue.push([x, y]);
   };
@@ -1114,7 +1095,7 @@ function floodOutsideEmpty(roadMap, bounds, padding = 2) {
   return { outside, x0, x1, y0, y1 };
 }
 
-export function splitBorderMapByOutsideReachability(roadMap, borderMap, { padding = 2, polygon = null } = {}) {
+export function splitBorderMapByOutsideReachability(roadMap, borderMap, { padding = 2 } = {}) {
   const bounds = boundsForRoadMap(roadMap);
   if (!bounds) {
     return {
@@ -1126,23 +1107,31 @@ export function splitBorderMapByOutsideReachability(roadMap, borderMap, { paddin
   }
 
   const pad = Math.max(1, Number(padding) || 1);
+
+  // Flood 1 (road-only barrier): used for outsideEmpty return value and outer bridge pass.
   const flooded = floodOutsideEmpty(roadMap, bounds, pad);
+
+  // Flood 2 (road + border barrier): used for inner/outer classification.
+  // Border cells act as an additional sealing layer, preventing the flood from
+  // entering the loop interior through road gaps at hairpin turns or diagonal
+  // corners.  A border cell is outer iff it is ADJACENT to the exterior flood;
+  // inner otherwise.  This handles degenerate centerline polygons (e.g. straight
+  // diagonal lines) and disconnected road components at tight turns.
+  const classifyFlood = floodOutsideEmpty(roadMap, bounds, pad, borderMap);
 
   const outerBorderMap = new Map();
   const innerBorderMap = new Map();
 
   for (const cell of borderMap.values()) {
     const k = keyOf(cell.x, cell.y);
-    // When a closed-loop polygon path is supplied, use a winding-number test to
-    // determine inner vs outer.  This is topologically exact — unlike the flood
-    // approach it cannot be fooled by narrow road gaps between adjacent teeth.
-    if (polygon) {
-      if (isInsideGridPolygon(cell.x, cell.y, polygon)) {
-        innerBorderMap.set(k, cell);
-      } else {
-        outerBorderMap.set(k, cell);
-      }
-    } else if (flooded.outside.has(k)) {
+    const x = cell.x, y = cell.y;
+    const adjacentToExterior = (
+      classifyFlood.outside.has(keyOf(x + 1, y)) ||
+      classifyFlood.outside.has(keyOf(x - 1, y)) ||
+      classifyFlood.outside.has(keyOf(x, y + 1)) ||
+      classifyFlood.outside.has(keyOf(x, y - 1))
+    );
+    if (adjacentToExterior) {
       outerBorderMap.set(k, cell);
     } else {
       innerBorderMap.set(k, cell);
@@ -1344,7 +1333,7 @@ export function planToTrackData(plan, {
     if (!plan.closeLoop) {
       borderMap = pruneOpenEndCaps(plan.borderMap, plan.centerlinePieces, plan.widthTiles);
     } else {
-      const split = splitBorderMapByOutsideReachability(plan.roadMap, plan.borderMap, { padding: 2, polygon: plan.centerlinePieces });
+      const split = splitBorderMapByOutsideReachability(plan.roadMap, plan.borderMap, { padding: 2 });
       borderMap = split.outerBorderMap;
 
       // Outer bridge pass: fill convex corner gaps (diagonal check prevents spurious bridges)

@@ -91,7 +91,6 @@ function runTest(label, gridPath, widthTiles) {
   const borderMap = buildBorderFromRoad(roadMap);
   const split = splitBorderMapByOutsideReachability(roadMap, borderMap, {
     padding: 2,
-    polygon: pieces,
   });
 
   // Compute bounding box for display
@@ -136,18 +135,23 @@ function runTest(label, gridPath, widthTiles) {
   console.log("\n  # road   + centerline   O outer-border   I inner-border   · outside-flood");
 
   // Check: are any "O" cells inside the loop interior?
-  // Interior cells = not road, not outside-flood, not border
+  // With the road+border flood approach, outer border cells are adjacent to the
+  // exterior flood (outsideEmpty) but not necessarily IN it.
   const outside = split.outsideEmpty;
   let badCount = 0;
   for (const [k, c] of split.outerBorderMap) {
-    // An outer border cell should be reachable from outside (in `outside` set)
-    if (!outside.has(k)) {
-      console.log(`  !! MISCLASSIFIED outer border at (${c.x}, ${c.y}) — not in outside flood`);
+    const x = c.x, y = c.y;
+    const adjacentToOutside = (
+      outside.has(`${x+1},${y}`) || outside.has(`${x-1},${y}`) ||
+      outside.has(`${x},${y+1}`) || outside.has(`${x},${y-1}`)
+    );
+    if (!adjacentToOutside) {
+      console.log(`  !! MISCLASSIFIED outer border at (${c.x}, ${c.y}) — not adjacent to outside flood`);
       badCount++;
     }
   }
   if (badCount === 0) {
-    console.log("  ✓ All outer border cells are correctly in the outside-flood region.");
+    console.log("  ✓ All outer border cells are correctly adjacent to the outside-flood region.");
   } else {
     console.log(`  ✗ ${badCount} outer border cell(s) appear inside the loop!`);
   }
