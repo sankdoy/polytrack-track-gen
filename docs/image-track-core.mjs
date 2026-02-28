@@ -1502,18 +1502,30 @@ export function generateTrackFromImageData({
   const { mask, width, height } = imageDataToBinaryMask(imageData, { threshold, invert });
   const largest = keepLargestComponent(mask, width, height);
 
-  // Extract the outer perimeter ring before thinning.
-  // For a filled road-surface image (the typical input) this gives a 1-2 pixel wide
-  // ring representing the outer edge of the track — the correct shape to trace.
-  // For already-thin centerline images the boundary ≈ the line itself, so behaviour
-  // is unchanged for closed loops.
-  //
-  // For OPEN paths: thinning the outer boundary of a thin diagonal line produces a
-  // closed ring (every pixel is on the boundary). Tracing that ring gives a doubled
-  // A→B→A path that creates chaotic mixed road/border output. Instead, thin the
-  // original mask directly to get a clean single A-to-B centerline.
+  // Extract the outer perimeter ring — kept for fallback tracing and for filled shapes.
   const outerBoundary = extractOuterBoundary(largest, width, height);
-  const maskForThinning = closeLoop ? outerBoundary : largest;
+
+  // Detect thin-line images (diagonal lines, straight paths, etc.) by comparing
+  // the outer boundary pixel count to the full mask pixel count.
+  // For thin lines: boundary ≈ full mask (ratio near 1.0).
+  // For filled ovals/rings: boundary is much smaller (ratio < 0.2).
+  let outerCount = 0, largestCount = 0;
+  for (let i = 0; i < largest.length; i++) {
+    if (largest[i]) largestCount++;
+    if (outerBoundary[i]) outerCount++;
+  }
+  const isThinMask = largestCount > 0 && (outerCount / largestCount) > 0.5;
+
+  // For thin-line images with closeLoop=true: the outer boundary ring's two parallel
+  // sides are sub-tile-width apart at track scale — they collapse to the same grid
+  // cells, producing chaotic interleaved road/border output.
+  // Override to open path so only a single clean A-to-B centerline is produced.
+  const effectiveCloseLoop = closeLoop && !isThinMask;
+
+  // Choose what mask to thin: for thin images or open paths, thin the full original
+  // mask to get a clean centerline. For filled/ring images with closeLoop, thin the
+  // outer boundary to trace the perimeter ring.
+  const maskForThinning = (isThinMask || !closeLoop) ? largest : outerBoundary;
 
   const thinned = thinMaskZhangSuen(maskForThinning, width, height, { maxIterations: 80 });
   const trimmed = trimEndpoints(thinned, width, height, { passes: trimPasses });
@@ -1530,10 +1542,10 @@ export function generateTrackFromImageData({
     throw new Error("Could not trace a usable line from the image. Try adjusting threshold or invert.");
   }
 
-  const simplified = simplifyPath(traced, { epsilon: simplifyEpsilon, closed: closeLoop });
+  const simplified = simplifyPath(traced, { epsilon: simplifyEpsilon, closed: effectiveCloseLoop });
   const sampled = resamplePath(simplified, {
     spacing: Math.max(0.6, Number(sampleSpacingPx) || 0.6),
-    closed: closeLoop,
+    closed: effectiveCloseLoop,
     minPoints: 72,
   });
 
@@ -1542,7 +1554,7 @@ export function generateTrackFromImageData({
   const desiredTiles = desiredMeters > 0 ? desiredMeters / Math.max(0.2, Number(metersPerTile) || 0.2) : 0;
   const requestedWidthTiles = Math.max(1, Number(widthTiles) || 1);
   const useInnerBorder = innerBorderEnabled == null
-    ? (closeLoop && requestedWidthTiles >= 3)
+    ? (effectiveCloseLoop && requestedWidthTiles >= 3)
     : !!innerBorderEnabled;
   const effectiveWidthTiles = useInnerBorder ? Math.max(3, requestedWidthTiles) : requestedWidthTiles;
 
@@ -1550,14 +1562,14 @@ export function generateTrackFromImageData({
   if (mode === "manual") {
     baseScale = Math.max(0.02, Number(scaleRatio) || 1);
   } else if (mode === "best-fit") {
-    const baseLength = polylineLength(sampled, closeLoop);
+    const baseLength = polylineLength(sampled, effectiveCloseLoop);
     if (desiredTiles > 0 && baseLength > 0) {
       baseScale = desiredTiles / baseLength;
     }
   }
 
   const fitted = fitScaleToTarget(sampled, {
-    closed: closeLoop,
+    closed: effectiveCloseLoop,
     scale: baseScale,
     desiredTiles: mode === "best-fit" ? desiredTiles : 0,
   });
@@ -1568,7 +1580,7 @@ export function generateTrackFromImageData({
   }
 
   const centerlinePieces = centerlineToPieces(gridPath, {
-    closed: closeLoop,
+    closed: effectiveCloseLoop,
     widthTiles: effectiveWidthTiles,
   });
 
@@ -1577,7 +1589,7 @@ export function generateTrackFromImageData({
 
   const plan = {
     widthTiles: effectiveWidthTiles,
-    closeLoop,
+    closeLoop: effectiveCloseLoop,
     centerlinePieces,
     roadMap,
     borderMap,
@@ -1591,7 +1603,7 @@ export function generateTrackFromImageData({
   });
 
   const shareCode = encodePolyTrack1ShareCode(name, trackData, "");
-  const metrics = buildMetrics(centerlinePieces.length, closeLoop, Math.max(0.2, Number(metersPerTile) || 0.2));
+  const metrics = buildMetrics(centerlinePieces.length, effectiveCloseLoop, Math.max(0.2, Number(metersPerTile) || 0.2));
 
   return {
     name,
