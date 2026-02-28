@@ -1022,6 +1022,32 @@ export function expandRoadWidth(centerlinePieces, { widthTiles = 1 } = {}) {
   return roadMap;
 }
 
+// Fill diagonal notch cells created by alternating perpendicular road expansion on
+// staircase paths. If three cells in any 2×2 block are road, the fourth is a notch
+// that would produce a jagged border tooth — fill it as road too.
+function fillStaircaseGaps(roadMap) {
+  const toAdd = [];
+  for (const cell of roadMap.values()) {
+    const { x, y } = cell;
+    for (const [dx, dy] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+      if (roadMap.has(keyOf(x + dx, y + dy))) continue;
+      if (roadMap.has(keyOf(x + dx, y)) && roadMap.has(keyOf(x, y + dy))) {
+        toAdd.push({ x: x + dx, y: y + dy });
+      }
+    }
+  }
+  for (const p of toAdd) {
+    const k = keyOf(p.x, p.y);
+    if (roadMap.has(k)) continue;
+    const cell = { x: p.x, y: p.y, votes: {} };
+    for (const [nx, ny] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const n = roadMap.get(keyOf(p.x + nx, p.y + ny));
+      if (n) { for (const [h] of Object.entries(n.votes)) addHeadingVote(cell.votes, Number(h)); break; }
+    }
+    roadMap.set(k, cell);
+  }
+}
+
 function countRoadNeighbors4(roadMap, x, y) {
   let n = 0;
   if (roadMap.has(keyOf(x, y - 1))) n++;
@@ -1620,6 +1646,7 @@ export function generateTrackFromImageData({
   });
 
   const roadMap = expandRoadWidth(centerlinePieces, { widthTiles: effectiveWidthTiles });
+  if (!useTurnPieces) fillStaircaseGaps(roadMap);
   const borderMap = buildBorderFromRoad(roadMap);
 
   const plan = {

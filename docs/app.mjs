@@ -1,4 +1,4 @@
-import { generateTrackFromImageData, imageDataToBinaryMask, maskToPreviewRgba } from "./image-track-core.mjs?v=2026-02-28g";
+import { generateTrackFromImageData, imageDataToBinaryMask, maskToPreviewRgba } from "./image-track-core.mjs?v=2026-02-28h";
 import { summarizeTrackData } from "./track-web.mjs?v=2026-02-28d";
 
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";
@@ -129,7 +129,7 @@ function parseNumber(id, fallback) {
 function readParams() {
   return {
     name: $("name")?.value?.trim() || "Image Trace Track",
-    targetLength: parseNumber("targetLength", 60),
+    targetLength: parseNumber("targetLength", 200),
     lengthUnit: $("lengthUnit")?.value || "km",
     scaleMode: $("scaleMode")?.value || "best-fit",
     scaleRatio: parseNumber("scaleRatio", 1),
