@@ -56,10 +56,6 @@ function keyOf(x, y) {
   return `${x},${y}`;
 }
 
-function parseKey(key) {
-  const i = key.indexOf(",");
-  return { x: Number(key.slice(0, i)), y: Number(key.slice(i + 1)) };
-}
 
 function sqr(v) {
   return v * v;
@@ -887,6 +883,7 @@ export function pickBorderPieceForMask(mask, fallbackRotation = 0, context = nul
 export function centerlineToPieces(cells, {
   closed = true,
   widthTiles = 1,
+  useTurnPieces = true,
 } = {}) {
   if (!Array.isArray(cells) || cells.length < 2) {
     throw new Error("Not enough path points after tracing");
@@ -934,14 +931,19 @@ export function centerlineToPieces(cells, {
       rotation = outHeading;
     } else {
       const delta = (outHeading - inHeading + 4) % 4;
-      if (delta === 1) {
+      if (!useTurnPieces) {
+        blockType = chooseStraightPiece(widthTiles);
+        rotation = outHeading;
+      } else if (delta === 1) {
         blockType = REFERENCE_BLOCK.TURN_LEFT;
+        rotation = turnRotation(inHeading, outHeading);
       } else if (delta === 3) {
         blockType = REFERENCE_BLOCK.TURN_RIGHT;
+        rotation = turnRotation(inHeading, outHeading);
       } else {
         blockType = chooseStraightPiece(widthTiles);
+        rotation = turnRotation(inHeading, outHeading);
       }
-      rotation = turnRotation(inHeading, outHeading);
     }
 
     out.push({
@@ -1533,8 +1535,6 @@ export function generateTrackFromImageData({
     }
   }
   const effectiveCloseLoop = closeLoop && !skeletonIsOpen;
-  // DEBUG
-  console.error(`[DBG] skeletonIsOpen=${skeletonIsOpen} effectiveCloseLoop=${effectiveCloseLoop} w=${width} h=${height}`);
 
   // Use the full-mask skeleton. Fall back to outer-boundary thinning only if the
   // full-mask thinning collapsed (e.g. a solid filled disk where the skeleton
@@ -1591,15 +1591,32 @@ export function generateTrackFromImageData({
   });
 
   const gridPath = fitted.grid;
-  // DEBUG
-  { let db=0; for(let i=2;i<gridPath.length;i++){const p0=gridPath[i-2],p1=gridPath[i-1],p2=gridPath[i];const dx0=p1.x-p0.x,dy0=p1.y-p0.y,dx1=p2.x-p1.x,dy1=p2.y-p1.y;if((dx0*dx1<0)||(dy0*dy1<0))db++;} console.error(`[DBG] gridPath.length=${gridPath.length} doublesBack=${db} first=(${gridPath[0]?.x},${gridPath[0]?.y}) last=(${gridPath[gridPath.length-1]?.x},${gridPath[gridPath.length-1]?.y})`); }
   if (gridPath.length < 24) {
     throw new Error("Traced path is too short after scaling. Increase target length or manual scale ratio.");
+  }
+
+  // Detect high-turn-rate staircases (open diagonal paths) and suppress micro-turns.
+  // On a Manhattan staircase almost every step changes heading (turnRate ≈ 1), so corner
+  // pieces would appear throughout the interior. Suppress them to plain ROAD pieces.
+  let useTurnPieces = true;
+  if (!effectiveCloseLoop && gridPath.length >= 12) {
+    const headings = [];
+    for (let i = 1; i < gridPath.length; i++) {
+      const h = headingFromStep(gridPath[i - 1], gridPath[i]);
+      if (h !== null) headings.push(h);
+    }
+    let turns = 0;
+    for (let i = 1; i < headings.length; i++) {
+      if (headings[i] !== headings[i - 1]) turns++;
+    }
+    const turnRate = turns / Math.max(1, headings.length - 1);
+    if (turnRate > 0.65) useTurnPieces = false;
   }
 
   const centerlinePieces = centerlineToPieces(gridPath, {
     closed: effectiveCloseLoop,
     widthTiles: effectiveWidthTiles,
+    useTurnPieces,
   });
 
   const roadMap = expandRoadWidth(centerlinePieces, { widthTiles: effectiveWidthTiles });
