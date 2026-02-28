@@ -67,7 +67,7 @@ export const SMALL_SEGMENT_CASES = Object.freeze([
       bbox: { w: 6, h: 6 },
       counts: { 10: 23, 11: 2, 12: 5, 75: 1, 76: 1, 92: 1 },
       shareCode:
-        "PolyTrack14xZDBHtGBCDGAA9ViaKuM1G5TZjN0uzqfffJtwoQe0z5QeRz5eaijZJJUoB2fcdLTvl5Ty3xjfXvQoEoHp64tWt65awijWJlzms2HCIjDvClwklRGEKyEwbSg1M8chTGBYx30kLzW9Qz0S6CIfwp7NZ0QH2r8GrmH4wpguCpXrVyGX4QeXCvd9u0Lm6NdY8dr5QKbeS7S2GufXVtZetdhdIilvHJV7xIUYKob5fx2tE08",
+        "PolyTrack14xZBBvsECCCFAA9XyGSxWWAiVm8I7F7K5yI5YW6YpervzZ5oRK59ECjSZ2jo9sgy20LjZg8eVFKl6Hl4JRg3hSex0cuPFiqbqreeY8C8XpFPGe68VgdzJXBiJ6X0AMcKsVsm50otP4OhJvbrVfWJ6eKbVTdfdiJoIyX2x5ptC8rFnwemXE7DdayRZYj3fZGPA6qzOYyz10qgM8ccuZKWdxeH4cz6iNDfg2AJqy1Ja9fgRoLEC",
     },
   },
   {
@@ -96,7 +96,7 @@ export const SMALL_SEGMENT_CASES = Object.freeze([
       bbox: { w: 5, h: 5 },
       counts: { 10: 14, 12: 4, 75: 1, 76: 1, 93: 1 },
       shareCode:
-        "PolyTrack14xZBBv2FCBDGAAefSSy4j41lJXPck8N3WaWWnVG6Xfe8ot3kl4LAwBAXTndAPXxq1vRCsJeyxqt18ClPKEE27YAPF0PqEpuQJXFIG7rExOHxy6IghOfNBvyw8yG1fJI636CXKhNL3O96jV9pY7hkSMV08MeMFlL7cSCbMS79izOuX0OWYVeNKcRmfVqo8hGx1mePo5XoRO",
+        "PolyTrack14xZBBvtDCCCAAA9XiUmmPKg4MvEm3IfoOYpI20Fe2XfOH4RLLLcF7jJkAvFrPDBKDULHBS8AUbeNfvEh0knxrSJcJ88Wyx19iY2mMaiPfqzl77ZPVgc2tN6mJ8OvsuHwqQQUqFfLpiWO2PusM7EseRSDRVzc3U0QQ3BdVcaXIiIPv0c8bg3cvDt1tXsfQGhjRfDYsAN5B",
     },
   },
   {
@@ -119,15 +119,15 @@ export const SMALL_SEGMENT_CASES = Object.freeze([
       { x: 0, y: 1 },
     ],
     expected: {
-      parts: 41,
+      parts: 45,
       centerline: 10,
-      road: 22,
+      road: 26,
       border: 18,
       startType: 92,
       bbox: { w: 8, h: 7 },
-      counts: { 10: 36, 12: 2, 75: 1, 76: 1, 92: 1 },
+      counts: { 10: 40, 12: 2, 75: 1, 76: 1, 92: 1 },
       shareCode:
-        "PolyTrack14xZDEHtoCBDAAA9XikFPvVq1N2UU5NjNzWE2VNe1fee8wZrtgQiUI4ewD7rfUCblwz84fXYkZ3vUCsjKtQm5rBP6Vtj2VEfqVJleFCkvLzTMHuF8ydzykfNrFNgecekofMfjYGhyhpE6dHaZLwo4YlqeSTfEmOpYY9U8SGtqV7WebljX2xTI1NN2eNISLa6Sy46I4ITnfl5d504d0h6phhHBGC7mkbfZ4511gA3Lwj5UepKHs6SoF7JEge1g4U8DxYrgkuevSVsJJB",
+        "PolyTrack14xZBBnkYDCCAAA8LpNKSOaF3ILiGQlemRxlohSouk4rvzY9ePk0gHIPEyfOeYfYW4SPSdxIy1ZuNYj6qS64dBhp5esk7F2fT7nflwGcWSkVnP0atD3vXWepUIsg6sueratOWsB6PGhKQmNuPTjmvYXMA81ZTcMoY4kJeKuhWjmtGbY7GfeLjJSSt6eP0SxIHLCOWfxqNxf6IfXflcVx9cykxgKnFWoBLBUVuAqORamuOk6M7SotrqN27DcfCQhZOkdzDa4KpttlfMNeWRO1DigCsqDffAQLdoqH",
     },
   },
   {

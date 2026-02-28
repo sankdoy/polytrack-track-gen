@@ -20,7 +20,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14x5MpCTd1LTTOEvS10cjqS3yJNT8p0szMYfWlBVlfsNxvMdy9sNNg0ABqyxQTPfJXh7u6uvV4oLJ7YYeNcHrKX3KvYTd03kCsSP9qq0z25idOKnKO4Idq4sd0R3CKqAjEA5EKI2D",
     note: "Smallest useful straight corridor.",
   },
   {
@@ -40,7 +40,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZBB3uFCBDAAA9VSOLr9zMmtMfKdi5fKsMOoDhxTfuXgugHRnwOYHPCpOeeKmwxIYkw7sp7f0a9oj5LgJ5vQ61kZ0YhVrLoub6YNzTWARGHnovbdQ9EZ4wh55vLXMt9DOqqjaImNx1KKUbXeaemptQgXpLVfHIrEPsVBWkGIucoPWB4MFfuP2P9mi1nHMLS1CI7enhz0fBQl12MJ",
     note: "Baseline straight strip.",
   },
   {
@@ -50,7 +50,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZDLHtDCCCFAA9XyHwte69GIgmOpcuBvZs0I05aaDhve559D5InVlb7KfKfiJWMPSuVlySrek9MgrVLjkxTtUF6iFCo08G5aHyJ4m8C4EUbAarpuGmBP4ymPTzC5zfMstwG8orGTrw3Bl177DDCPGRdfAecJl9JUvTdMIeulrvePwoRflCA",
     note: "Minimal right turn footprint.",
   },
   {
@@ -60,7 +60,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZBBntECCCFAA9XqGiUfoeKgOGOQbu8mmKNi4ey8vvz50v8LcmGcBgSq4Ne17xrDUvqwiyes0MKRTIV2e5BHboCGz0gUiFM0XLQfM70miODb2pc2VHmFvT6Lj9GfeB9g7sxRnEGdzY98lcU1u6WUHUOlN1FtDdLReMLk7JAWoqf47GefAggkWiF",
     note: "Minimal left turn footprint.",
   },
   {
@@ -70,7 +70,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZBBnlFCCCAAA8K5CvyerImagUpWmfrQwCNeylCkTfmBYaw0EZEMKChibhAIWnOAlOd9HROrfkF3hOFmnSdYYCnnUYGVlv8bOUL24tuV5LA21Bbxyvd8vch10yvddwjwD5vHLAIq0Cgf2pM2DvlPwTe80TPwBzjlGCLsW3w2r0Zza4PBa6DFmBbnHc7vLjU0TszPzv4WVYFOVEbelgq54ycSsGtkVVyMBJppHp9kfBB6koOA",
     note: "Single right turn.",
   },
   {
@@ -80,7 +80,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZFIvsECCCFAA9bKiyapFSWXVsmEB3lJeBm5jGTxveNdWegnT8Yj6jEiDhGhipN4gCAZDFMnxg3nE1h8LZbwuS9qPq4dyrPu9NZjKMEpULi8xsUeasYYVte6X3VMfgZ3sPNu8dpVKMRlEUxgOZrVHMHxCXqicNeTePn4SXUJBbrMXjzyPY0CnUw6My95eP7Pf4QbfqaIvrSCQXl2nZwtlabG3K6RTu3SRwkzPS3HIXB",
     note: "Single left turn.",
   },
   {
@@ -90,7 +90,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZHDvtkDBDAAA9XqNsoP2tpNpVcbj4SfmlIioWs0gve7M7Zmj56TSIeO8yF4VEifTOq4Qg4R3VvhV9Zo3fX779joQiiZ8YjKlditOjre6gNfRn4wgQHLQ30O0A3fFmXWYdy837rhECZru3ZGnF3feBpa1P4rVXQTVeQQ7uGQ2U6CrOT0ebTpdRSfDSGpV1NAmcfEmY6W6vgMEfWPbmWiXgGt2ZHXYuUBRmeGDc6dt8sfdwcfqaNnRbIMKeQvXrXUqKPeBa3bxWOD1SfRy4MtJZckeRyoRmgjia2eHgMQr6c",
     note: "Known difficult transition pair.",
   },
   {
@@ -100,7 +100,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZJCvslDBDAAA9XqajiljHRGpITJGyuiE0Y8oeo4rfso3zFsxuRQnssscccd59hI5utbfKzbb8KkePFuEKDSdo8OxX5dpK2CQtSdZ36ej1FfcVlB1NCZpUoD0GGWT7gbG5M29z8kFtT4GoXpmP8FgqfqQWf4tKoo4ep2kaKMNKLc4bsfaK7wLU7XHR2BH8oIYx8SVetZQYBaBd5J6tt5K5P7pOcpBbOIMee4JPc0U5OkpJJSEJDe5jR6PtjDUc71eUnkxop8pmmsWcchkLVkByZZp0Qe8VDUvh6rKzfDQ3gxSC",
     note: "Mirror of right-left offset.",
   },
   {
@@ -110,7 +110,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZBBvtDDBDAAA9XiUq1HRpmO1ULm03UKycJCdMe1vzx6ngxIrYfYMOAVVFlY0NE5nHGr2L6p59pHvnhlpyew5ukaq6aeerSl6yWbCX12IToKqYxp1oihcaQ3GxNZ04xeDfELogwW5xWgMrpGatdofKbqLQkM5e5gv2otFHXucyfFkyD5LEl4E6jJgBOS5BESPGFehL5u27t7f9ZfbwE",
     note: "Forces alternating turn pieces with min spacer.",
   },
   {
@@ -120,7 +120,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZFCHtkCCCFAA9XqsLjwjrARJ2umpOT8oG0Qxkutb6le1XNnDgmifoekzFCpitrXk9922BeqtiTDfk5GO3cafZ9BW5UH2X2psAG6dxVjkQHJsZK6o2lk07kl38XtfvRHTIULqbr69yjea9DfUkBZ0vsKqCPWsLmUdDlf7eDTLQqFYg4tLvVD1tpnvUOGyyLsSIp0M6iV4jaYteChYWBu0NrMGz6aTbwP2kHiDNiAnKebec5MfLAM2loGB",
     note: "Tightest R-L pairing.",
   },
   {
@@ -150,7 +150,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZBBv1FCBDAAAefShNyr7CrJkmTk3qT5WauEG7Xfe9B2Kii9aJYKhoz5krJexiO0HwqBKppFRFMWp1RSAfC7la3gbGzWfGObKN3bd0TzW61sM0yxZLn7Oveo8RlfEUvwjghYYAMQEaijHdEL6Becuf0mouolbiQ3xDnvfbgme3UtdNudrvKy160YaBzAohXHG8k1gwM5TbV6F6tG8lwa5oSQzs7BlK7CoSePQoiPQD",
     note: "Short same-side endpoint U; isolates border-end + corner decisions.",
   },
   {
@@ -160,7 +160,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZBBvuGCBDAAA9VyYusfc2QXMRohfz6ztkVTFqnedOwtqwTBzUiHlSjMOHo6Ywer4UnFQPNhhJHgwldPTf2G4aopNKj4NOpIBaDImBxGtWIVlsdGUrrbCbMfoUfrv84CwHVoqBKLnOapEmn0l179TfrRoclc7pajEW2GbsgWEnM4HOVKGaXJhSoXV7tMv7zXu6u5zLysCyZdDu5sScHBPCSmI9oYufXUEefoT66pS",
     note: "Mirror of short U right.",
   },
   {
@@ -170,7 +170,7 @@ export const COMMAND_CASES = Object.freeze([
     closed: false,
     widthTiles: 1,
     style: "shape-only",
-    expectedShareCode: "",
+    expectedShareCode: "PolyTrack14xZHM3tkCCCAAFerUevN6ykEdLMXTxUuLTwaJwETD7pf6sz3lnZOuGKO1WfSAMAhYnK3f7953QhvRy71GS1NkDkzo4sZbUmRGtCESBAzh4ImJGq4EmxhDsfbN3jtePMrpMLemrX7UcGr0Jx6TepVJODP9d9dPtAeqPLAEAiXAB3HOfHLyLscHr3roY9wlRfRdFoNnr70bYa9cf8quGGP3r84U3rEtUdbRrqFfN6fDXGX5jddGTj1VswzvamfoUkDglkn1JPwiJLFthfJ7rieDRfIox0t5yRxJMdMLsPQlhastapmL7OWlCHO8W0uK4wSsnLurIeEzSyHBUSOq5Rpc88Oy2fRxyTDP",
     note: "Longer alternating-turn corridor.",
   },
 ]);

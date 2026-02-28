@@ -1020,6 +1020,15 @@ export function expandRoadWidth(centerlinePieces, { widthTiles = 1 } = {}) {
   return roadMap;
 }
 
+function countRoadNeighbors4(roadMap, x, y) {
+  let n = 0;
+  if (roadMap.has(keyOf(x, y - 1))) n++;
+  if (roadMap.has(keyOf(x + 1, y))) n++;
+  if (roadMap.has(keyOf(x, y + 1))) n++;
+  if (roadMap.has(keyOf(x - 1, y))) n++;
+  return n;
+}
+
 export function buildBorderFromRoad(roadMap) {
   const borderMap = new Map();
 
@@ -1307,9 +1316,7 @@ export function planToTrackData(plan, {
     centerlineSet.add(keyOf(p.x, p.y));
     let blockType = p.blockType;
     let checkpointOrder = null;
-    if (!emitCheckpoints && blockType === REFERENCE_BLOCK.START) {
-      blockType = chooseStraightPiece(plan.widthTiles);
-    } else if (emitCheckpoints && blockType === REFERENCE_BLOCK.START) {
+    if (blockType === REFERENCE_BLOCK.START) {
       blockType = chooseStartBlockType(p.rotation, plan.roadMap, p.x, p.y);
     }
     if (emitCheckpoints && checkpointIndices.has(i) && blockType !== REFERENCE_BLOCK.START && blockType !== REFERENCE_BLOCK.START_ALT) {
@@ -1345,6 +1352,12 @@ export function planToTrackData(plan, {
           for (let bx = x0; bx <= x1; bx++) {
             const k = keyOf(bx, by);
             if (plan.roadMap.has(k) || !split.outsideEmpty.has(k) || borderMap.has(k)) continue;
+            if (countRoadNeighbors4(plan.roadMap, bx, by) >= 2) continue;
+            // Only fill gaps within the road's own bounding box. Genuine staircase bridges
+            // sit inside the road's spatial extent; spurious corner bridges are always at
+            // positions that extend beyond the road bounding box.
+            if (bx < split.bounds.minX || bx > split.bounds.maxX ||
+                by < split.bounds.minY || by > split.bounds.maxY) continue;
             const n = ob.has(keyOf(bx, by - 1)), e = ob.has(keyOf(bx + 1, by));
             const s = ob.has(keyOf(bx, by + 1)), w = ob.has(keyOf(bx - 1, by));
             if ((n && e && !ob.has(keyOf(bx + 1, by - 1))) ||
@@ -1569,7 +1582,6 @@ export function generateTrackFromImageData({
     borderPiece,
     borderEnabled,
     innerBorderEnabled: useInnerBorder,
-    emitCheckpoints: false,
   });
 
   const shareCode = encodePolyTrack1ShareCode(name, trackData, "");
