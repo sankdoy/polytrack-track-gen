@@ -1502,32 +1502,44 @@ export function generateTrackFromImageData({
   const { mask, width, height } = imageDataToBinaryMask(imageData, { threshold, invert });
   const largest = keepLargestComponent(mask, width, height);
 
-  // Extract the outer perimeter ring — kept for fallback tracing and for filled shapes.
+  // Always thin the full original mask to get the best skeleton.
+  // - For line images (diagonal, straight): produces a clean open A→B centerline.
+  // - For ring images (hand-drawn oval outline): produces a closed ring skeleton.
+  // - For filled shapes (solid disk): collapses to a small structure or nothing
+  //   → caught by the outerBoundary fallback below.
+  //
+  // The old approach of thinning the outer boundary ring first is problematic for
+  // line images: the two parallel sides of the outer ring collapse to the same tile
+  // cells when gridded, producing chaotic road/border interleaving.
   const outerBoundary = extractOuterBoundary(largest, width, height);
+  const thinnedFull = thinMaskZhangSuen(largest, width, height, { maxIterations: 80 });
 
-  // Detect thin-line images (diagonal lines, straight paths, etc.) by comparing
-  // the outer boundary pixel count to the full mask pixel count.
-  // For thin lines: boundary ≈ full mask (ratio near 1.0).
-  // For filled ovals/rings: boundary is much smaller (ratio < 0.2).
-  let outerCount = 0, largestCount = 0;
-  for (let i = 0; i < largest.length; i++) {
-    if (largest[i]) largestCount++;
-    if (outerBoundary[i]) outerCount++;
+  // Determine if the skeleton is an open path (has degree-1 endpoints) or a closed
+  // ring (no endpoints). Open skeletons cannot form a meaningful closed circuit at
+  // tile scale — override closeLoop to false for them.
+  let skeletonIsOpen = false;
+  outer: for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!thinnedFull[y * width + x]) continue;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height && thinnedFull[ny * width + nx]) n++;
+        }
+      }
+      if (n === 1) { skeletonIsOpen = true; break outer; }
+    }
   }
-  const isThinMask = largestCount > 0 && (outerCount / largestCount) > 0.5;
+  const effectiveCloseLoop = closeLoop && !skeletonIsOpen;
+  // DEBUG
+  console.error(`[DBG] skeletonIsOpen=${skeletonIsOpen} effectiveCloseLoop=${effectiveCloseLoop} w=${width} h=${height}`);
 
-  // For thin-line images with closeLoop=true: the outer boundary ring's two parallel
-  // sides are sub-tile-width apart at track scale — they collapse to the same grid
-  // cells, producing chaotic interleaved road/border output.
-  // Override to open path so only a single clean A-to-B centerline is produced.
-  const effectiveCloseLoop = closeLoop && !isThinMask;
-
-  // Choose what mask to thin: for thin images or open paths, thin the full original
-  // mask to get a clean centerline. For filled/ring images with closeLoop, thin the
-  // outer boundary to trace the perimeter ring.
-  const maskForThinning = (isThinMask || !closeLoop) ? largest : outerBoundary;
-
-  const thinned = thinMaskZhangSuen(maskForThinning, width, height, { maxIterations: 80 });
+  // Use the full-mask skeleton. Fall back to outer-boundary thinning only if the
+  // full-mask thinning collapsed (e.g. a solid filled disk where the skeleton
+  // shrinks to a point), then ultimately fall back to the raw outer boundary.
+  const thinned = thinnedFull;
   const trimmed = trimEndpoints(thinned, width, height, { passes: trimPasses });
 
   let traced = traceMainPathFromMask(trimmed, width, height);
@@ -1535,7 +1547,11 @@ export function generateTrackFromImageData({
     traced = traceMainPathFromMask(thinned, width, height);
   }
   if (traced.length < 8) {
-    // Final fallback: try tracing the raw outer boundary in case thinning collapsed it
+    // Filled-disk fallback: thin the outer boundary ring instead
+    const thinnedOuter = thinMaskZhangSuen(outerBoundary, width, height, { maxIterations: 80 });
+    traced = traceMainPathFromMask(thinnedOuter, width, height);
+  }
+  if (traced.length < 8) {
     traced = traceMainPathFromMask(outerBoundary, width, height);
   }
   if (traced.length < 8) {
@@ -1575,6 +1591,8 @@ export function generateTrackFromImageData({
   });
 
   const gridPath = fitted.grid;
+  // DEBUG
+  { let db=0; for(let i=2;i<gridPath.length;i++){const p0=gridPath[i-2],p1=gridPath[i-1],p2=gridPath[i];const dx0=p1.x-p0.x,dy0=p1.y-p0.y,dx1=p2.x-p1.x,dy1=p2.y-p1.y;if((dx0*dx1<0)||(dy0*dy1<0))db++;} console.error(`[DBG] gridPath.length=${gridPath.length} doublesBack=${db} first=(${gridPath[0]?.x},${gridPath[0]?.y}) last=(${gridPath[gridPath.length-1]?.x},${gridPath[gridPath.length-1]?.y})`); }
   if (gridPath.length < 24) {
     throw new Error("Traced path is too short after scaling. Increase target length or manual scale ratio.");
   }
