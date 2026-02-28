@@ -1,4 +1,4 @@
-import { generateTrackFromImageData, imageDataToBinaryMask, maskToPreviewRgba } from "./image-track-core.mjs?v=2026-02-28d";
+import { generateTrackFromImageData, imageDataToBinaryMask, maskToPreviewRgba } from "./image-track-core.mjs?v=2026-02-28e";
 import { summarizeTrackData } from "./track-web.mjs?v=2026-02-28d";
 
 const hasDOM = typeof document !== "undefined" && typeof window !== "undefined";

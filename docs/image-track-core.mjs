@@ -1505,11 +1505,17 @@ export function generateTrackFromImageData({
   // Extract the outer perimeter ring before thinning.
   // For a filled road-surface image (the typical input) this gives a 1-2 pixel wide
   // ring representing the outer edge of the track — the correct shape to trace.
-  // For an already-thin centerline image the boundary ≈ the line itself, so behaviour
-  // is unchanged.
+  // For already-thin centerline images the boundary ≈ the line itself, so behaviour
+  // is unchanged for closed loops.
+  //
+  // For OPEN paths: thinning the outer boundary of a thin diagonal line produces a
+  // closed ring (every pixel is on the boundary). Tracing that ring gives a doubled
+  // A→B→A path that creates chaotic mixed road/border output. Instead, thin the
+  // original mask directly to get a clean single A-to-B centerline.
   const outerBoundary = extractOuterBoundary(largest, width, height);
+  const maskForThinning = closeLoop ? outerBoundary : largest;
 
-  const thinned = thinMaskZhangSuen(outerBoundary, width, height, { maxIterations: 80 });
+  const thinned = thinMaskZhangSuen(maskForThinning, width, height, { maxIterations: 80 });
   const trimmed = trimEndpoints(thinned, width, height, { passes: trimPasses });
 
   let traced = traceMainPathFromMask(trimmed, width, height);
